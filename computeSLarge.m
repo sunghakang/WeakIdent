@@ -1,4 +1,4 @@
-function [SLarge] = computeSLarge(dictList,Uhat, fftPhis,  subSamplingIdx, mx,mt,dx,dt)
+function [SLarge] = computeSLarge(W, dictList,Uhat, fftPhis,  subSamplingIdx, mx,mt,dx,dt)
 % COMPUTESLARGE: script for computing the scale matrix
 % Copyright 2022, All Rights Reserved
 % Code by Mengyi Tang
@@ -14,45 +14,39 @@ numOfU   = length(Uhat);
 while ind < size(dictList,1)+1
     tags               = dictList(ind,1:numOfU);
     beta_u_plus_beta_v = sum(tags);
-    if beta_u_plus_beta_v <= 1
-        fcn = 1;
-        for k = 1:numOfU
-            fcn = fcn  .* ((Uhat{k} ).^tags(k));
-        end
-    else
-        fcn = 0;
-        for k = 1:numOfU
-            if tags(k)>0
-                fcn  = fcn + (tags(k)-1) * ((Uhat{k} ).^(tags(k)-1));
+    if beta_u_plus_beta_v > 1
+        if numOfU == 1
+            fcn = (tags(1)) * ((Uhat{1} ).^(tags(1)-1));
+        elseif numOfU == 2
+            if tags(1) == 0
+                fcn = (tags(2)) * ((Uhat{2} ).^(tags(2)-1));
+            elseif tags(2) == 0
+                fcn = (tags(1)) * ((Uhat{1} ).^(tags(1)-1));
+            else
+                fcn =       tags(1) * (Uhat{1} ).^(tags(1)-1) .* (Uhat{2}).^(tags(2));
+                fcn = fcn + tags(2) * (Uhat{2} ).^(tags(2)-1) .* (Uhat{1}).^(tags(1));
             end
         end
     end
     while all(dictList(ind,1:numOfU) == tags)
-        test_conv_cell = cell(1, dimXandT);
-        scale_factor = 1;
-        if  sum(dictList(ind,numOfU+1:numOfU+dimXandT)) == 0  
-            for k = 1:dimXandT
-                test_conv_cell{k}   = fftPhis{k}(1,:);
-                if k < dimXandT
-                    scale_factor = scale_factor * (mx * dx)^dictList(ind,numOfU+k);
-                else
-                    scale_factor = scale_factor * (mt * dt)^dictList(ind,numOfU+k);
-                end
-            end
-        else
+        if beta_u_plus_beta_v > 1
+            test_conv_cell = cell(1, dimXandT);
             scale_factor = 1;
-            for k = 1:dimXandT
-                test_conv_cell{k} = fftPhis{k}(dictList(ind, numOfU+k)+1 ,:);
-                if k < dimXandT
-                    scale_factor = scale_factor * (mx * dx)^dictList(ind,numOfU+k);
-                else
-                    scale_factor = scale_factor * (mt * dt)^dictList(ind,numOfU+k);
+            if  sum(dictList(ind,numOfU+1:numOfU+dimXandT)) == 0
+                for k = 1:dimXandT
+                    test_conv_cell{k}   = fftPhis{k}(1,:);
+                end
+            else
+                for k = 1:dimXandT
+                    test_conv_cell{k} = fftPhis{k}(dictList(ind, numOfU+k)+1 ,:);
                 end
             end
+            fcn_conv = convNDfft(fcn,test_conv_cell,subSamplingIdx,2);
+            SLarge(:,ind) = fcn_conv(:);
+        else
+            SLarge(:,ind) = W(:,ind);
+            
         end
-        fcn_conv = convNDfft(fcn,test_conv_cell,subSamplingIdx,2);
-        scale_factor = 1;
-        SLarge(:,ind) = fcn_conv(:)./scale_factor;
         ind = ind+1;
         if ind > size(dictList,1)
             break

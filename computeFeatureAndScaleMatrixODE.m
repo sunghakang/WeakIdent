@@ -32,7 +32,7 @@ Cfs_ffts{1}(2,:) = [];
 WandbLarge = computeWLarge1dODE(dictList,Uhat, Cfs_ffts,  subSamplingIdx);
 SandbLarge = WandbLarge;
 
-SandbLarge(WandbLarge==0) = 1;
+// SandbLarge(WandbLarge==0) = 1;
 
 end
 

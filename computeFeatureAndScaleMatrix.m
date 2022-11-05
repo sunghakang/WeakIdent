@@ -23,8 +23,8 @@ end
 [phiXs, phiTs] = computeTestFuns(mx, mt,px,pt, alphaBar);
 fftPhis = computeFFTOfTestFuns(mathbbNxmathbbNt, phiXs, phiTs, mx, mt, dx, dt);
 WandbLarge = computeWLarge(dictList,Uhat, fftPhis,  subSamplingIdx);
-SandbLarge = computeSLarge(dictList,Uhat, fftPhis,  subSamplingIdx, mx,mt,dx,dt);
-SandbLarge(SandbLarge==0) = 1;
+SandbLarge = computeSLarge(WandbLarge, dictList,Uhat, fftPhis,  subSamplingIdx, mx,mt,dx,dt);
+% SandbLarge(SandbLarge==0) = 1;
 end
 
 
