@@ -1,6 +1,5 @@
 function [Uhat] = addNoiseV2(U,sigmaSNR,rngSeed)
 % ADDNOISEV2: script for simulating noise on data
-
 % Copyright 2022, All Rights Reserved
 % Code by Mengyi Tang
 % For Paper, "WeakIdent: Weak formulation for Identifying
