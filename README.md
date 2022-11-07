@@ -15,29 +15,9 @@ We propose a general and robust framework to recover differential equations usin
 We use weak formulation to facilitate an effcient and robust way to handle noise. For a robust recovery against noise and the choice of hyper-parameters, we introduce two new mechanisms, narrow-fit and trimming, for the coeffcient support and value recovery, respectively. 
 
 ## The structure of this repository.
+```
 ├── README.md
 ├── WeakIdent-Matlab
-│   ├── README.md
-│   ├── SPV2.m
-│   ├── addNoiseV2.m
-│   ├── buildStrTagsV2.m
-│   ├── buildTagsV3.m
-│   ├── computeCrossValidationErrV2.m
-│   ├── computeDescretePhi.m
-│   ├── computeFeatureAndScaleMatrix.m
-│   ├── computeFeatureAndScaleMatrixODE.m
-│   ├── computeSLarge.m
-│   ├── computeWLarge.m
-│   ├── datasetV2
-│   ├── findHydynamicRegionV2.m
-│   ├── findIdxOfInterestingFeaturesV2.m
-│   ├── findcornersV2.m
-│   ├── getTagsV2.m
-│   ├── main.m
-│   ├── printEquationV3.m
-│   ├── printEquations.m
-│   ├── weakIdentFeatureSelectionV2.m
-│   └── weakIdentV4.m
 └── WeakIdent-Python
     ├── README.md
     ├── configs
@@ -45,19 +25,8 @@ We use weak formulation to facilitate an effcient and robust way to handle noise
     ├── main.py
     ├── model.py
     ├── output
-    │   ├── Korteweg-de_Vires.txt
-    │   ├── anisotropic_porous_medium.txt
-    │   ├── heat.txt
-    │   ├── kuramoto-sivashinsky.txt
-    │   ├── nonlinear_schrodinger.txt
-    │   ├── ode_duffing.txt
-    │   ├── ode_linear.txt
-    │   ├── ode_lorenz.txt
-    │   ├── ode_lotka_volterra.txt
-    │   ├── ode_van_der_pol.txt
-    │   ├── reaction_diffusion.txt
-    │   └── transport.txt
     └── utils.py
+```
 
 ## WeakIdent - Matlab 
 run `main.m` to use WeakIdent on partial differential equations and and ode systems.
