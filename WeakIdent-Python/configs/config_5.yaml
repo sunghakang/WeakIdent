@@ -5,7 +5,7 @@ libraray_arg:
   use_cross_der : False
 
 Noise:
-  sigma_SNR  :  0.3
+  sigma_SNR  :  0.2
   
 Subsampling:
   stride_x    : 4
