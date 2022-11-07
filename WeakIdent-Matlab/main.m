@@ -1,9 +1,9 @@
-clc
+% clc
 clear
 close all
 
-pde_num           = 2;
-sigmaSNR          = 0.1; % relative signal-noise-ratio
+pde_num           = 10;
+sigmaSNR          = 0; % relative signal-noise-ratio
 
 pde_names     = {'Linear2d','VanderPol','Duffing', 'LotkaVolterra', 'Lorenz', 'heat', 'transportDiff', 'KdV.mat','KS', 'NLS', 'PM', 'rxnDiff'};
 disp('---------------------------------------------------------------------------------------------')
@@ -16,7 +16,7 @@ disp(['Prediction for ',pde_name])
 %%
 rng('shuffle');
 rng_seed = rng().Seed;
-rng_seed = 123;
+rng_seed = 1;
 rng(rng_seed);
 
 Uhat = addNoiseV2(U,sigmaSNR,rng_seed);
