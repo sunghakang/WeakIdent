@@ -12,59 +12,6 @@ For Paper, "WeakIdent: Weak formulation for Identifying
 Differential Equation using Narrow-fit and Trimming"
 by Mengyi Tang, Wenjing Liao, Rachel Kuske and Sung Ha Kang
 
-
-## Structure of this project
-```
-├── LICENSE
-├── README.md
-├── configs
-│   ├── config_1.yaml
-│   ├── config_10.yaml
-│   ├── config_11.yaml
-│   ├── config_12.yaml
-│   ├── config_2.yaml
-│   ├── config_3.yaml
-│   ├── config_4.yaml
-│   ├── config_5.yaml
-│   ├── config_6.yaml
-│   ├── config_7.yaml
-│   ├── config_8.yaml
-│   └── config_9.yaml
-├── dataset-Python
-│   ├── Duffing.npy
-│   ├── KS.npy
-│   ├── KdV.npy
-│   ├── Linear2d.npy
-│   ├── Lorenz.npy
-│   ├── LotkaVolterra.npy
-│   ├── NLS.npy
-│   ├── PM.npy
-│   ├── RD_u_evolution.mp4
-│   ├── VanderPol.npy
-│   ├── heat.npy
-│   ├── rxnDiffV2.npy
-│   ├── simulate_reaction_diffusion_eqn.py
-│   └── transportDiff.npy
-├── environment.yml
-├── main.py
-├── model.py
-├── output
-│   ├── Korteweg-de_Vires.txt
-│   ├── anisotropic_porous_medium.txt
-│   ├── heat.txt
-│   ├── kuramoto-sivashinsky.txt
-│   ├── nonlinear_schrodinger.txt
-│   ├── ode_duffing.txt
-│   ├── ode_linear.txt
-│   ├── ode_lorenz.txt
-│   ├── ode_lotka_volterra.txt
-│   ├── ode_van_der_pol.txt
-│   ├── reaction_diffusion.txt
-│   └── transport.txt
-└── utils.py
-
-```
-
 ## Environment set-up
 run `conda env create -f environment.yml` to create the environment.
 
