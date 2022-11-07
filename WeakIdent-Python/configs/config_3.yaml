@@ -1,0 +1,19 @@
+libraray_arg:
+  max_poly   :  4
+  max_dt     :  1
+  max_dx     :  4
+  use_cross_der : True
+  
+Noise:
+  sigma_SNR  :  0.05
+  
+Subsampling:
+  stride_x    : 8
+  stride_t    : 5
+
+Dataset_name:
+  equation   : 'Anisotropic Porous Medium (PM) Equation (1 variable 2D)'
+  filename   : 'PM.npy'
+
+Other_paramters:
+  Tau        : 0.2

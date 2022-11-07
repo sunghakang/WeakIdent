@@ -1,0 +1,20 @@
+libraray_arg:
+  max_poly   :  6
+  max_dt     :  1
+  max_dx     :  0
+  use_cross_der : False
+
+Noise:
+  sigma_SNR  :  0.1
+  
+Subsampling:
+  stride_x   : 1
+  stride_t   : 1
+
+
+Dataset_name:
+  equation   : '2D Linear System (ODE - 2 variables - 1d )'
+  filename   : 'Linear2d.npy'
+
+Other_paramters:
+  Tau        : 0.05

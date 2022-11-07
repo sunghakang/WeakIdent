@@ -1,0 +1,19 @@
+libraray_arg:
+  max_poly   :  3
+  max_dt     :  1
+  max_dx     :  0
+  use_cross_der : False
+
+Noise:
+  sigma_SNR  :  0.1
+  
+Subsampling:
+  stride_x    : 15
+  stride_t    : 15
+
+Dataset_name:
+  equation   : 'Nonlinear System (Lotka-Volterra) (ODE - 3 variables - 1d )'
+  filename   : 'Lorenz.npy'
+
+Other_paramters:
+  Tau        : 0.05

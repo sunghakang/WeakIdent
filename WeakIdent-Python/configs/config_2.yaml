@@ -1,0 +1,19 @@
+libraray_arg:
+  max_poly   :  4
+  max_dt     :  1
+  max_dx     :  5
+  use_cross_der : False
+
+Noise:
+  sigma_SNR  :  0.05
+  
+Subsampling:
+  stride_x    : 12
+  stride_t    : 13
+
+Dataset_name:
+  equation    : 'Reaction Diffusion Type Equation (2 variables, 2D)'
+  filename   : 'rxnDiff.npy'
+
+Other_paramters:
+  Tau        : 0.05

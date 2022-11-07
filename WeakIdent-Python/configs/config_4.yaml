@@ -1,0 +1,19 @@
+libraray_arg:
+  max_poly   :  6
+  max_dt     :  1
+  max_dx     :  6
+  use_cross_der : False
+
+Noise:
+  sigma_SNR  :  0.1
+  
+Subsampling:
+  stride_x    : 5
+  stride_t    : 5
+
+Dataset_name:
+  equation   : 'Heat Equation (1 variables, 1D)'
+  filename   : 'heat.npy'
+
+Other_paramters:
+  Tau        : 0.05

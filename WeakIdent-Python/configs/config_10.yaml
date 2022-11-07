@@ -1,0 +1,19 @@
+libraray_arg:
+  max_poly   :  5
+  max_dt     :  1
+  max_dx     :  0
+  use_cross_der : False
+
+Noise:
+  sigma_SNR  :  0.1
+  
+Subsampling:
+  stride_x    : 1
+  stride_t    : 1
+
+Dataset_name:
+  equation   : 'Nonlinear System (Duffing) (ODE - 2 variables - 1d )'
+  filename   : 'Duffing.npy'
+
+Other_paramters:
+  Tau        : 0.05

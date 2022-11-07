@@ -1,0 +1,19 @@
+libraray_arg:
+  max_poly   :  6
+  max_dt     :  1
+  max_dx     :  6
+  use_cross_der : False
+
+Noise:
+  sigma_SNR  :  0.4
+  
+Subsampling:
+  stride_x    : 3
+  stride_t    : 6
+
+Dataset_name:
+  equation   : 'Kuramoto-Sivashinsky (KS) Equation (1 variables, 1D)'
+  filename   : 'KS.npy'
+
+Other_paramters:
+  Tau        : 0.2
