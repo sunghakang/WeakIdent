@@ -7,7 +7,7 @@ Copyright 2022, All Rights Reserved
 
 Code author:  Mengyi Tang Rajchel
 
-For Paper, ["WeakIdent: Weak formulation for Identifying Differential Equation using Narrow-fit and Trimming" by Mengyi Tang, Wenjing Liao, Rachel Kuske and Sung Ha Kang](https://arxiv.org/abs/2211.03134).
+For Paper, "[WeakIdent: Weak formulation for Identifying Differential Equation using Narrow-fit and Trimming](https://arxiv.org/abs/2211.03134)" by Mengyi Tang, Wenjing Liao, Rachel Kuske and Sung Ha Kang.
 
 If you found WeakIdent useful in your research, please consider cite 
 
