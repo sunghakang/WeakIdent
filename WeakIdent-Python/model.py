@@ -160,7 +160,7 @@ def weak_ident_pred(
     d_coe['feature'] = list(tags_rhs)
     for i in range(num_of_u):
         d_coe['true ' + tags_lhs[i]] = list(c_true[:,i])
-        d_coe['pred ' + tags_lhs[i]] = list(c_true[:,i])
+        d_coe['pred ' + tags_lhs[i]] = list(c_pred[:,i])
     df_coe = pd.DataFrame(d_coe)
     return df_errs,  df_eqns, df_coe, run_time
 
