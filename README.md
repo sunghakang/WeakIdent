@@ -7,7 +7,21 @@ Copyright 2022, All Rights Reserved
 
 Code author:  Mengyi Tang Rajchel
 
-For Paper, "WeakIdent: Weak formulation for Identifying Differential Equation using Narrow-fit and Trimming" by Mengyi Tang, Wenjing Liao, Rachel Kuske and Sung Ha Kang
+For Paper, ["WeakIdent: Weak formulation for Identifying Differential Equation using Narrow-fit and Trimming" by Mengyi Tang, Wenjing Liao, Rachel Kuske and Sung Ha Kang](https://arxiv.org/abs/2211.03134).
+
+If you found WeakIdent useful in your research, please consider cite 
+
+```
+@misc{tang2022weakident,
+      title={WeakIdent: Weak formulation for Identifying Differential Equations using Narrow-fit and Trimming}, 
+      author={Mengyi Tang and Wenjing Liao and Rachel Kuske and Sung Ha Kang},
+      year={2022},
+      eprint={2211.03134},
+      archivePrefix={arXiv},
+      primaryClass={math.NA}
+}
+```
+
 
 ## Goal
 This works focused on data-driven identifcation of differential equations when the given data are corrupted by noise. When the governing diferential equation is a linear combination of various differential terms, the identifcation problem can be formulated as solving a linear system, with the feature matrix consisting of linear and nonlinear terms multiplied by a coeffcient vector. The goal is to identify the correct terms that form the equation to capture the dynamics of the given data. We propose a general and robust framework to recover differential equations using a weak formulation, for both ordinary and partial di erential equations (ODEs and PDEs).  We use weak formulation to facilitate an effcient and robust way to handle noise. For a robust recovery against noise and the choice of hyper-parameters, we introduce two new mechanisms, narrow-fit and trimming, for the coeffcient support and value recovery, respectively. 
