@@ -139,7 +139,7 @@ Differential Equation using Narrow-fit and Trimming*
 
 Remark: In order to run WeakIdent on reaction diffusion type equation, please click [here](https://www.dropbox.com/t/TKK9U1ttVwX2mfHP) to download the 
 dataset into folder`dataset-Python`, or run `simulate_reaction_diffusion_eqn.py` to simulate the dataset before running 
-`python main.py --config configs/config_2.yaml`.  To run WeakIdent on Noninear System 2D (Lotka-Volterra), please run `simulate_lotka_volterra_2d_ode_eqn.py` to simulate the dataset before running `python main.py --config configs/config_13.yaml`.
+`python main.py --config configs/config_2.yaml`.  To run WeakIdent on Nonlinear System 2D (Lotka-Volterra), please run `simulate_lotka_volterra_2d_ode_eqn.py` to simulate the dataset before running `python main.py --config configs/config_13.yaml`.
 
 
 ### Sample output
