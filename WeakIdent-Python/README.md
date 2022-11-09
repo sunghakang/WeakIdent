@@ -161,14 +161,15 @@ Each configuration file in `configs` is associated with one experiments. See the
 | 10 | Nonlinear System (Duffing) | 
 | 11 | Noninear System (Lotka-Volterra) | 
 |12| Nonlinear System (Lorenz) | 
+|13| Noninear System 2D (Lotka-Volterra) |
 
 We refer details of each dataset to the experimental result section in *WeakIdent: Weak formulation for Identifying
 Differential Equation using Narrow-fit and Trimming*
 
 
 Remark: In order to run WeakIdent on reaction diffusion type equation, please click [here](https://www.dropbox.com/t/TKK9U1ttVwX2mfHP) to download the 
-dataset into folder`dataset-Python`, or run `simulate_reaction_diffusion_eqn.py` before running 
-`python main.py --config configs/config_2.yaml`. 
+dataset into folder`dataset-Python`, or run `simulate_reaction_diffusion_eqn.py` to simulate the dataset before running 
+`python main.py --config configs/config_2.yaml`.  To run WeakIdent on Noninear System 2D (Lotka-Volterra), please run `simulate_lotka_volterra_2d_ode_eqn.py` to simulate the dataset before running `python main.py --config configs/config_13.yaml`.
 
 
 ## Sample output
