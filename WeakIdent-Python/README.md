@@ -138,7 +138,6 @@ Finished support trimming and narrow fit for variable no.1 . A support is found.
 │    │     $e_2$ │   $e_{\infty}$ │   $e_{res}$ │   $tpr$ │   $ppv$ │
 ╞════╪═══════════╪════════════════╪═════════════╪═════════╪═════════╡
 │  0 │ 0.0132347 │      0.0132485 │    0.449226 │       1 │       1 │
-│  0 │ 0.0132347 │      0.0132485 │    0.449226 │       1 │       1 │
 ╘════╧═══════════╧════════════════╧═════════════╧═════════╧═════════╛
 ```
 
@@ -169,7 +168,7 @@ Differential Equation using Narrow-fit and Trimming*
 
 Remark: In order to run WeakIdent on reaction diffusion type equation, please click [here](https://www.dropbox.com/t/TKK9U1ttVwX2mfHP) to download the 
 dataset into folder`dataset-Python`, or run `simulate_reaction_diffusion_eqn.py` to simulate the dataset before running 
-`python main.py --config configs/config_2.yaml`.  To run WeakIdent on Noninear System 2D (Lotka-Volterra), please run `simulate_lotka_volterra_2d_ode_eqn.py` to simulate the dataset before running `python main.py --config configs/config_13.yaml`.
+`python main.py --config configs/config_2.yaml`.  To run WeakIdent on Nonlinear System 2D (Lotka-Volterra), please run `simulate_lotka_volterra_2d_ode_eqn.py` to simulate the dataset before running `python main.py --config configs/config_13.yaml`.
 
 
 ## Sample output
