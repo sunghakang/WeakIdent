@@ -3,7 +3,7 @@ from scipy.integrate import solve_ivp
 
 max_t = 1
 dt = 0.01
-file_name = 'LotkaVolterra2D2'
+file_name = 'LotkaVolterra2D'
 
 t = np.linspace(0, max_t, int(max_t / dt + 1))
 
