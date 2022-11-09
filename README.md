@@ -7,7 +7,21 @@ Copyright 2022, All Rights Reserved
 
 Code author:  Mengyi Tang Rajchel
 
-For Paper, "WeakIdent: Weak formulation for Identifying Differential Equation using Narrow-fit and Trimming" by Mengyi Tang, Wenjing Liao, Rachel Kuske and Sung Ha Kang
+For Paper, "[WeakIdent: Weak formulation for Identifying Differential Equation using Narrow-fit and Trimming](https://arxiv.org/abs/2211.03134)" by Mengyi Tang, Wenjing Liao, Rachel Kuske and Sung Ha Kang.
+
+If you found WeakIdent useful in your research, please consider cite 
+
+```
+@misc{tang2022weakident,
+      title={WeakIdent: Weak formulation for Identifying Differential Equations using Narrow-fit and Trimming}, 
+      author={Mengyi Tang and Wenjing Liao and Rachel Kuske and Sung Ha Kang},
+      year={2022},
+      eprint={2211.03134},
+      archivePrefix={arXiv},
+      primaryClass={math.NA}
+}
+```
+
 
 ## Goal
 This works focused on data-driven identifcation of differential equations when the given data are corrupted by noise. When the governing diferential equation is a linear combination of various differential terms, the identifcation problem can be formulated as solving a linear system, with the feature matrix consisting of linear and nonlinear terms multiplied by a coeffcient vector. The goal is to identify the correct terms that form the equation to capture the dynamics of the given data. We propose a general and robust framework to recover differential equations using a weak formulation, for both ordinary and partial di erential equations (ODEs and PDEs).  We use weak formulation to facilitate an effcient and robust way to handle noise. For a robust recovery against noise and the choice of hyper-parameters, we introduce two new mechanisms, narrow-fit and trimming, for the coeffcient support and value recovery, respectively. 
@@ -71,73 +85,7 @@ Finished support trimming and narrow fit for variable no.1 . A support is found.
 ├────┼────────────────┼────────────┼────────────┤
 │  5 │ u_{xxxx}       │       0    │  0         │
 ├────┼────────────────┼────────────┼────────────┤
-│  6 │ u_{xxxxx}      │       0    │  0         │
-├────┼────────────────┼────────────┼────────────┤
-│  7 │ u_{xxxxxx}     │       0    │  0         │
-├────┼────────────────┼────────────┼────────────┤
-│  8 │ u^2            │       0    │  0         │
-├────┼────────────────┼────────────┼────────────┤
-│  9 │ (u^2)_{x}      │       0    │  0         │
-├────┼────────────────┼────────────┼────────────┤
-│ 10 │ (u^2)_{xx}     │       0    │  0         │
-├────┼────────────────┼────────────┼────────────┤
-│ 11 │ (u^2)_{xxx}    │       0    │  0         │
-├────┼────────────────┼────────────┼────────────┤
-│ 12 │ (u^2)_{xxxx}   │       0    │  0         │
-├────┼────────────────┼────────────┼────────────┤
-│ 13 │ (u^2)_{xxxxx}  │       0    │  0         │
-├────┼────────────────┼────────────┼────────────┤
-│ 14 │ (u^2)_{xxxxxx} │       0    │  0         │
-├────┼────────────────┼────────────┼────────────┤
-│ 15 │ u^3            │       0    │  0         │
-├────┼────────────────┼────────────┼────────────┤
-│ 16 │ (u^3)_{x}      │       0    │  0         │
-├────┼────────────────┼────────────┼────────────┤
-│ 17 │ (u^3)_{xx}     │       0    │  0         │
-├────┼────────────────┼────────────┼────────────┤
-│ 18 │ (u^3)_{xxx}    │       0    │  0         │
-├────┼────────────────┼────────────┼────────────┤
-│ 19 │ (u^3)_{xxxx}   │       0    │  0         │
-├────┼────────────────┼────────────┼────────────┤
-│ 20 │ (u^3)_{xxxxx}  │       0    │  0         │
-├────┼────────────────┼────────────┼────────────┤
-│ 21 │ (u^3)_{xxxxxx} │       0    │  0         │
-├────┼────────────────┼────────────┼────────────┤
-│ 22 │ u^4            │       0    │  0         │
-├────┼────────────────┼────────────┼────────────┤
-│ 23 │ (u^4)_{x}      │       0    │  0         │
-├────┼────────────────┼────────────┼────────────┤
-│ 24 │ (u^4)_{xx}     │       0    │  0         │
-├────┼────────────────┼────────────┼────────────┤
-│ 25 │ (u^4)_{xxx}    │       0    │  0         │
-├────┼────────────────┼────────────┼────────────┤
-│ 26 │ (u^4)_{xxxx}   │       0    │  0         │
-├────┼────────────────┼────────────┼────────────┤
-│ 27 │ (u^4)_{xxxxx}  │       0    │  0         │
-├────┼────────────────┼────────────┼────────────┤
-│ 28 │ (u^4)_{xxxxxx} │       0    │  0         │
-├────┼────────────────┼────────────┼────────────┤
-│ 29 │ u^5            │       0    │  0         │
-├────┼────────────────┼────────────┼────────────┤
-│ 30 │ (u^5)_{x}      │       0    │  0         │
-├────┼────────────────┼────────────┼────────────┤
-│ 31 │ (u^5)_{xx}     │       0    │  0         │
-├────┼────────────────┼────────────┼────────────┤
-│ 32 │ (u^5)_{xxx}    │       0    │  0         │
-├────┼────────────────┼────────────┼────────────┤
-│ 33 │ (u^5)_{xxxx}   │       0    │  0         │
-├────┼────────────────┼────────────┼────────────┤
-│ 34 │ (u^5)_{xxxxx}  │       0    │  0         │
-├────┼────────────────┼────────────┼────────────┤
-│ 35 │ (u^5)_{xxxxxx} │       0    │  0         │
-├────┼────────────────┼────────────┼────────────┤
-│ 36 │ u^6            │       0    │  0         │
-├────┼────────────────┼────────────┼────────────┤
-│ 37 │ (u^6)_{x}      │       0    │  0         │
-├────┼────────────────┼────────────┼────────────┤
-│ 38 │ (u^6)_{xx}     │       0    │  0         │
-├────┼────────────────┼────────────┼────────────┤
-│ 39 │ (u^6)_{xxx}    │       0    │  0         │
+│    │   ......       │     ...    │     ...    │
 ├────┼────────────────┼────────────┼────────────┤
 │ 40 │ (u^6)_{xxxx}   │       0    │  0         │
 ├────┼────────────────┼────────────┼────────────┤
