@@ -2,3 +2,6 @@
 datasetV2/rxnDiff.mat
 datasetV2/.DS_Store
 .DS_Store
+WeakIdent-Matlab/datasetV2/rxnDiff.mat
+WeakIdent-Python/__pycache__/model.cpython-38.pyc
+WeakIdent-Python/__pycache__/utils.cpython-38.pyc
