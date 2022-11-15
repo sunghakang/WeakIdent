@@ -31,7 +31,7 @@ def weak_ident_pred(
     
     Args:
         u_hat (np.array): array of shape (n,) (given data with n variable).
-        phi_xs (np.array): array of shape (max_dx +1, 2m_x + 1), fourier transform phi and phi^(i)(x) for i = 0,1,...,max_dx.
+        xs (np.array): array of shape (dim_x+1), spatial and temporal points (e.g. {(x_1,...,x_n), (t_1,...,t_n)} for dim_x = 1 ) of given data.
         true_coefficients: array of shape (n,).
         max_dx (int): maximum total order of partial derivatives.
         max_poly (int): maximum total order of monomials.
