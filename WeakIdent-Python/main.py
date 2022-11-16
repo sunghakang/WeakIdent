@@ -2,7 +2,7 @@
 # coding: utf-8
 import argparse
 import yaml
-import numpy as np
+# import numpy as np
 from utils import load_data, add_noise
 from model import weak_ident_pred
 from tabulate import tabulate
@@ -20,7 +20,7 @@ by Mengyi Tang, Wenjing Liao, Rachel Kuske and Sung Ha Kang
 """
 parser = argparse.ArgumentParser(
     description='Implementation of WeakIdent in Python')
-parser.add_argument('--config', default='./config_1.yaml')
+parser.add_argument('--config', default='./configs/config_1.yaml')
 
 
 def main():
