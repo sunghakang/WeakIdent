@@ -1,4 +1,4 @@
-from utils import build_feature_vector_tags, compute_test_function_para, circshift, drange, compute_err_inf, compute_err_l2, compute_err_res, compute_tpr_ppv, two_piece_fit_v2, build_tag_1d_ode, build_tag_de, least_square_adp, set_hist_bins, set_sparsity_level, write_output_tables
+from utils import build_feature_vector_tags, compute_test_function_para, circshift, two_piece_fit_v2, least_square_adp, set_hist_bins, set_sparsity_level, write_output_tables
 import numpy as np
 import scipy.linalg
 import numpy_indexed as npi
@@ -165,10 +165,10 @@ def weak_ident_pred(
 
     # build feature matrix including left-hand-side feature and right-hand-side features and corresponding scale matrix
     feature_matrix, scale_matrix = build_feature_matrix_and_scale_matrix(
-        u_hat, xs, max_dx, skip_x, skip_t, is_1d_ode, dictionary_list)
+        u_hat, xs, max_dx, skip_x, skip_t, dictionary_list, is_1d_ode)
 
     # find a highly dynamic region from given data. idx_highly_dynamic_region stores the row index of feature
-    # matrix that contains spatial-temporal features inside a highly dynamic region. This step helps with better 
+    # matrix that contains spatial-temporal features inside a highly dynamic region. This step helps with better
     # coefficient recover and idx_highly_dynamic_region will be used during narrow-fit.
     idx_highly_dynamic_region = find_highly_dynamic_region(dictionary_list,
                                                            scale_matrix, is_1d_ode,
@@ -196,22 +196,22 @@ def weak_ident_pred(
 
 def build_feature_matrix_and_scale_matrix(
         u_hat: np.array, xs: np.array, max_dx: int, skip_x: int, skip_t: int,
-        is_1d_ode: bool, dict_list: np.array) -> Tuple[np.array, np.array]:
+        dict_list: np.array, is_1d_ode: bool) -> Tuple[np.array, np.array]:
     '''
-    This function build feature matrix and scale matrix for given data.
+    This function builds a feature matrix W and a scale matrix S for given data.
 
     Args:
         u_hat (np.array): array of shape (n,) , this is given noisy data with n variables.
         xs (np.array): array of shape (dim_x + 1,), spacing of given data.
-        max_dx (int): maximum total order of partial derivatives.
-        skip_x (int): number of skipped steps in spatial domain when downsampling feature matrix.
-        skip_t (int): number of skipped steps in temporal domain when downsampling feature matrix.
-        is_1d_ode (bool): whether given data is 1d-ode type
+        max_dx (int): maximum total order of partial derivatives (including multiple dimension derivatives).
+        skip_x (int): number of skipped steps in spatial domain when downsampling the feature matrix.
+        skip_t (int): number of skipped steps in temporal domain when downsampling the feature matrix.
         dict_list(np.ndarray): array of shape (L, n + dim_x + 1). Here each row represents a feature,
                             column 1 - column n represent the degree of monomial for each feature,
                             column n+1 - column n+dim_x represent the order of partial derivatives along each spatial domain,
                             and column n+dim_x+1 represents the order of partial derivatives along temporal
                             domain. We take 0 or 1 for this value in WeakIdent.
+        is_1d_ode (bool): whether given data is 1d-ode type.
     Returns:
         Tuple[np.array, np.array]: feature matrix W and scale matrix S (including lhs).                        
 
@@ -237,22 +237,22 @@ def find_highly_dynamic_region(dict_list: np.array, s_b: np.array,
                                is_1d_ode: bool, num_of_variables: int,
                                dim_x: int) -> np.array:
     """
-    This function returns the index of rows in the feature matrix where (x,t) is located in the 
+    This function returns the index of rows in the feature matrix where (x_i,t_n) is located in the 
     highly dynamic region.
 
     Args:
-        dict_list(np.ndarray): array of shape (L, n + dim_x + 1). Here each row represents a feature,
-                               column 1 - column n represent the degree of monomial for each feature,
+        dict_list(np.ndarray): array of shape (L, n + dim_x + 1). Here each row represents a feature.
+                               Column 1 - column n represent the degree of monomial for each feature,
                                column n+1 - column n+dim_x represent the order of partial derivatives 
-                               along each spatial domain,
-                               and column n+dim_x+1 represents the order of partial derivatives along temporal
-                               domain. We take 0 or 1 for this value in WeakIdent.
+                               along each spatial domain, and column n+dim_x+1 represents the order of 
+                               partial derivatives along temporal domain. We take 0 or 1 for this value 
+                               in WeakIdent.
         idx_interesting_features (np.array): array of shape (m, n + 2) where each row provides the a tag 
                                              for an interesting feature.
         s_b (np.array): scale matrix S (inlcuding lhs).
-        is_1d_ode (bool): whether given data is 1d-ode type
-        num_of_variables(int) : number of variables of given data
-        dim_x(int): spatial dimension of given data
+        is_1d_ode (bool): whether given data is 1d-ode type.
+        num_of_variables(int) : number of variables of given data.
+        dim_x(int): spatial dimension of given data.
 
     Returns:
         np.array: row index of features located in highly dynamic region
@@ -282,22 +282,22 @@ def diff_eqn_identification(
         s_b_large: np.array,
         idx_highly_dynamic: np.array) -> Tuple[np.array, np.array, np.array]:
     """
-    This function performs identification for given feature matrix (including lhs and rhs), scale matrix and row index of highly dynamic region.
+    This function performs identification using given feature matrix (including lhs and rhs), scale matrix and row index of highly dynamic region.
 
     Args:
         tau (float): trimming score. Defaults to 0.05.
-        num_of_variables(int) : number of variables of given data
-        dim_x(int): spatial dimension of given data
-        is_1d_ode (bool): whether given data is 1d-ode type
-        lhs_ind(np.ndarray): shape of (n,) , row index of left hand side feature 
-        rhs_ind(np.ndarray): shape of (L,) , row index of right hand side features
-        w_b_large (np.array): original feature matrix
-        s_b_large (np.array): original scale matrix
-        idx_highly_dynamic (np.array): row index of features located in highly dynamic region
+        num_of_variables(int) : number of variables of given data.
+        dim_x(int): spatial dimension of given data.
+        is_1d_ode (bool): whether given data is 1d-ode type.
+        lhs_ind(np.ndarray): shape of (n,) , row index of left-hand-side feature.
+        rhs_ind(np.ndarray): shape of (L,) , row index of right-hand-side features.
+        w_b_large (np.array): original feature matrix.
+        s_b_large (np.array): original scale matrix.
+        idx_highly_dynamic (np.array): row index of features located in highly dynamic region.
 
     Returns:
         w(np.array):  original feature matrix.
-        b(np.array):  original dynamic variable.
+        b(np.array):  original dynamic variable, it can be u_t or v_t in pdes.
         c(np.array):  identified sparse coefficient vector.
     """
     print("The number of rows in the highly dynamic region is ",
@@ -307,16 +307,16 @@ def diff_eqn_identification(
     scales_lhs_features, scales_rhs_features = scales_w_b[
         lhs_ind], 1 / scales_w_b[rhs_ind].flatten()
 
-    w, w_tilda, w_narrow_tilda = compute_rescaled_features(
+    w, w_tilda, w_narrow_tilda = compute_features_matrix_and_rescaled_matrix(
         rhs_ind, w_b_large, idx_highly_dynamic, scales_rhs_features)
-    b, b_tilda, b_narrow_tilda = compute_rescaled_features(
+    b, b_tilda, b_narrow_tilda = compute_features_matrix_and_rescaled_matrix(
         lhs_ind, w_b_large, idx_highly_dynamic, scales_lhs_features)
 
     c_pred = np.zeros(
         (w_b_large.shape[1] - num_of_variables, num_of_variables))
 
     # set up maximum sparsity level. For a predetermined dictionary, one can use a number <= # total features
-    # as maximum sparsity level. This is suggested to be an appropriate number to reduce computation cost.
+    # as maximum sparsity level. This number is suggested to be an appropriate number to reduce computation cost.
     sparsity = set_sparsity_level(is_1d_ode, num_of_variables, dim_x)
 
     for num_var in range(num_of_variables):
@@ -325,20 +325,20 @@ def diff_eqn_identification(
             scales_lhs_features, w_narrow_tilda, b_narrow_tilda, num_var, tau)
         print(" ")
         print(
-            'Finished support trimming and narrow fit for variable no.%d . A support is found.'
+            'WeakIdent finished support trimming and narrow-fit for variable no.%d . A support is found this variable.'
             % (num_var + 1))
         c_pred[support_pred, num_var] = coeff_sp
     return w, b, c_pred
 
 
-def compute_rescaled_features(
+def compute_features_matrix_and_rescaled_matrix(
         rhs_ind: np.array, w_b_large: np.array, idx_highly_dynamic: np.array,
         scales_rhs_features: np.array) -> Tuple[np.array, np.array, np.array]:
-    """This function build feature matrix, rescaled feature matrix, and rescaled narrower feature matrix (for narrow-fit)
-
+    """This function builds feature matrix, rescaled feature matrix, and rescaled narrower feature matrix (for narrow-fit)
+       using scaling factor for ech feature.
     Args:
-        rhs_ind(np.ndarray): shape of (L,) , row index of right hand side features
-        w_b_large (np.array): original feature matrix
+        rhs_ind(np.ndarray): shape of (L,) , row index of right-hand-side features.
+        w_b_large (np.array): original feature matrix.
         idx_highly_dynamic (np.array): row index of features located in highly dynamic region
         scales_rhs_features (np.array): rescaling factor for right-hand-side features.
 
@@ -406,13 +406,13 @@ def compute_feature_and_scale_matrix_ode(
         m: int, p: int, skip: int, dict_list: np.array, u_hat: np.array,
         dt: np.array) -> Tuple[np.array, np.array]:
     """
-    This function will compute the feature matrix W and scale matrix S for both lhs and rhs features for ODEs.
+    This function computes the feature matrix W and scale matrix S for both lhs and rhs features for ODEs.
 
     Note: (1) the current version of ode equations refer to 1d ode problems where spatial derivatives do not exits.
           (2) for odes, we consider the scale matrix S to be identical to feature matrix W.
     Args:
-        m (int): one-side length of local integration area
-        p (int): parameter in the test function
+        m (int): one-side length of a local integration area.
+        p (int): parameter in the test function.
         skip (int): skipping steps when downsampling a feature matrix
         dict_list(np.ndarray): array of shape (L, n + 2). Here each row represents a feature,
                                column 1 - column n represents the degree of monomial in each feature
@@ -488,7 +488,7 @@ def compute_feature_and_scale_matrix_pde(
         dict_list: np.array, u_hat: np.array, dx: np.array, dt: np.array,
         max_dx: int) -> Tuple[np.array, np.array]:
     """
-    This function will compute the feature matrix W and scale matrix S (including lhs and rhs) for given data.
+    This function computes the feature matrix W and scale matrix S (including lhs and rhs) for given data.
 
     Args:
         m_x (int): 1-side size of integrating region in spatial domain.
@@ -497,14 +497,14 @@ def compute_feature_and_scale_matrix_pde(
         p_t (int): parameter in test function in terms of t.
         skip_x (int): # skipping steps in spatial domain when downsampling feature matrix
         skip_t (int): # skipping steps in temporal domain when downsampling feature matrix
-        dict_list(np.ndarray): array of shape (L, n + dim_x + 1). Here each row represents a feature,
-                               column 1 - column n represents the degree of monomial for each variable
+        dict_list(np.ndarray): array of shape (L, n + dim_x + 1). Here each row represents a feature.
+                               Column 1 - column n represents the degree of monomial for each variable
                                column n+1 - column n+dim_x represents the order of partial derivatives 
                                along each spatial domain,
                                and column n+dim_x+1 represents the order of partial derivatives along temporal
                                domain. We take 0 or 1 in WeakIdent.
         u_hat (np.array): given data of shape (n,).
-        dx (np.array): delta t (spatial increase) of given data.
+        dx (np.array): delta x (spatial increase) of given data.
         dt (np.array): delta t (temporal increase) of given data.
         max_dx (int): maximum total order of partial derivatives.
 
@@ -533,13 +533,13 @@ def compute_feature_and_scale_matrix_pde(
 def compute_s_v2(w: np.array, dict_list: np.array, u_hat: np.array,
                  fft_phis: np.array, subsampling_idx: np.array) -> np.array:
     """
-    This function will compute the scale matrix S (including lhs) for given data.
+    This function computes the scale matrix S (including lhs) for given data.
 
     Args:
         w (np.array): (feature matrix array) of shape (N, L + n) where L is the number of rhs features and n 
                       is the number of variables
-        dict_list(np.ndarray): array of shape (L, n + dim_x + 1). Here each row represents a feature,
-                               column 1 - column n represents the degree of monomial for each variable, 
+        dict_list(np.ndarray): array of shape (L, n + dim_x + 1). Here each row represents a feature.
+                               Column 1 - column n represents the degree of monomial for each variable, 
                                column n+1 - column n+dim_x represents the order of partial derivatives 
                                along each spatial domain, 
                                and column n+dim_x+1 represents the order of partial derivatives along temporal
@@ -602,7 +602,7 @@ def compute_s_v2(w: np.array, dict_list: np.array, u_hat: np.array,
 
 def compute_base_of_s(u_hat: np.array, tags: np.array) -> np.array:
     """
-    This function will compute the base of the scale (for error normalization) for a given features. 
+    This function computes the base of the scales (for error normalization) for a given features. 
     The definition of base follows the idea of leading coefficient of epsilon in WeakIdent paper.
 
     Args:
@@ -632,102 +632,10 @@ def compute_base_of_s(u_hat: np.array, tags: np.array) -> np.array:
     return fcn
 
 
-def compute_s(dict_list: np.array, u_hat: np.array, fft_phis: np.array,
-              subsampling_idx: np.array, m_x: int, m_t: int, dx: np.array,
-              dt: np.array):
-    """
-    This function compute the scale matrix S (including lhs) for given data.
-    [IMPORTANT]: This function is not used anymore since it only applies to the case of 1 variable.
-                 See compute_s_v2 for the most updated version. 
-    Args:
-        w (np.array): (feature matrix array) of shape (N, L + n) where L is the number of rhs features and n 
-                      is the number of variables
-        dict_list(np.ndarray): array of shape (L, n + dim_x + 1). Here each row represents a feature,
-                               column 1 - column n represents the degree of monomial for each feature,
-                               column n+1 - column n+dim_x represents the order of partial derivatives,
-                               along each spatial domain,
-                               and column n+dim_x+1 represents the order of partial derivatives along temporal
-                               domain. We take 0 or 1 in WeakIdent.
-        u_hat (np.array): array of shape (n,) (given data).
-        fft_phis (np.array): array of shape (max_dx+1, mathbbNx). This is the fft of test functions and it's derivatives. 
-        subsampling_idx (np.array): array of shape (Nx , ) which stores the index of subsampled feature matrix.
-        m_x (int): 1-side size of integrating region in spatial domain.
-        m_t (int): 1-side size of integrating region in temporal domain.
-        dx (np.array): delta t (spatial increase) of given data .
-        dt (np.array): delta t (temporal increase) of given data .
-    Returns:
-        np.array: (scale matrix including lhs) array of shape (N, L + n). 
-    """
-    print(" ")
-    print('Start building scale matrix S:')
-    n = u_hat.shape[0]
-    dim = len(u_hat[0].shape)
-    L = dict_list.shape[0]
-    if dim == 2:
-        S = np.ones((len(subsampling_idx[0]) * len(subsampling_idx[1]), L))
-    elif dim == 3:
-        S = np.ones((len(subsampling_idx[0])**2 * len(subsampling_idx[2]), L))
-    ind = 1
-    while ind < L:
-        tags = dict_list[ind, :n]
-        beta_u_plus_beta_v = np.sum(tags)
-        if beta_u_plus_beta_v <= 1:
-            fcn = 1
-            for k in range(n):
-                fcn = fcn * np.power(u_hat[k], tags[k])
-        else:
-            fcn = 0
-            for k in range(n):
-                if tags[k] > 0:
-                    fcn = fcn + (tags[k] - 1) * np.power(u_hat[k], tags[k] - 1)
-        while np.all(dict_list[ind, :n] == tags):
-            test_conv_cell = []
-            scale_factor = 1
-            if np.sum(dict_list[ind, n:n + dim]) == 0:
-                for k in range(dim):
-                    temp = fft_phis[k]
-                    test_conv_cell.append(temp[0, :].reshape(-1, 1))
-                    if k + 1 < dim:
-                        scale_factor = scale_factor * \
-                            np.power(m_x * dx, dict_list[ind, n+k])
-                    else:
-                        scale_factor = scale_factor * \
-                            np.power(m_t * dt, dict_list[ind, n+k])
-            else:
-                scale_factor = 1
-                for k in range(dim):
-                    temp = fft_phis[k]
-                    test_conv_cell.append(
-                        temp[int(dict_list[ind, n + k]), :].reshape(-1, 1))
-                    if k + 1 < dim:
-                        scale_factor = scale_factor * \
-                            np.power(m_x * dx, dict_list[ind, n+k])
-                    else:
-                        scale_factor = scale_factor * \
-                            np.power(m_t * dt, dict_list[ind, n+k])
-            fcn_conv = conv_fft(fcn, test_conv_cell, subsampling_idx)
-            if dim == 2:
-                S[:, ind] = np.transpose(fcn_conv, (1, 0)).flatten()
-            elif dim == 3:
-                S[:, ind] = np.transpose(fcn_conv, (2, 1, 0)).flatten()
-            if dim == 3 or L > 100:
-                print(" Progress {:2.1%}".format((ind + 1) / L), end="\r")
-            else:
-                sys.stdout.write('\r')
-                sys.stdout.write("[{:{}}] {:.1f}%".format(
-                    "=" * ind, L - 1, (100 / (L - 1) * ind)))
-                sys.stdout.flush()
-            ind += 1
-            if ind >= L:
-                break
-    print(" ")
-    return S
-
-
 def compute_w(dict_list: np.array, u_hat: np.array, fft_phis: np.array,
               subsampling_idx: np.array):
     """
-    This function will computes the feature matrix W (including lhs) for given data for pde equations.
+    This function computes the feature matrix W (including lhs) for given data to identify pde equations.
 
     Args:
         dict_list(np.ndarray): array of shape (L, n + dim_x + 1). Here each row represents a feature,
@@ -811,11 +719,13 @@ def conv_fft_v2(fu: np.array, fft_phi: np.array,
 def conv_fft(fu: np.array, fft_phis: np.array, subsampling_idx: np.array):
     """
     This function takes f(u) and fft(d^i(phi)) as input and returns the 
-    multi-dimennional convolution u * d^i(phi) as
-    as a weak feature.
-
+    multi-dimennional convolution u * d^i(phi) as as a weak feature.
+    Note: this function is called only when the equation to be identified is not a
+          1d ode systems. See conv_fft for multi-dimensional
+          convlution for the case of PDEs or multi-dimensional ODEs. 
+          See conv_fft_v2() for the case of 1d-ode equations.
     Args:
-        fu (np.array): the base of feature (the product of monomials)
+        fu (np.array): the base of feature (the product of monomials).
         fft_phi (np.array): This is the fft of test functions (derivative) fft(d^i(phi)) in each spatial
                             and temporal domain.
         subsampling_idx (np.array): stores the index of subsampled feature matrix in each spatial and 
@@ -856,7 +766,7 @@ def compute_fft_test_fun(dims: tuple, phi_xs: np.array, phi_ts: np.array,
         phi_ts (np.array): array of shape (2, 2m_x + 1), fourier transform phi and phi^(i)(t) for i = 0,1,...,max_dt.
         m_x (int): 1-side size of integrating region in spatial domain.
         m_t (int): 1-side size of integrating region in temporal domain.
-        dx (np.array): delta t (spatial increase) of given data.
+        dx (np.array): delta x (spatial increase) of given data.
         dt (np.array): delta t (temporal increase) of given data.
 
     Returns:
@@ -883,7 +793,7 @@ def compute_fft_test_fun(dims: tuple, phi_xs: np.array, phi_ts: np.array,
 def compute_test_funs(m_x: int, m_t: int, p_x: int, p_t: int,
                       max_dx: np.array) -> Tuple[np.array, np.array]:
     """
-    This function will compute the discretized test function for both spatial dimension and temporal 
+    This function computes the discretized test function for both spatial dimension and temporal 
     dimension.
 
     Args:
@@ -913,7 +823,7 @@ def weak_ident_feature_selection(w: np.array,
                                  num_var: int,
                                  tau=0.05) -> np.ndarray:
     """
-    This function returns the support predicted by WeakIdent. See details in paper "WeakIdent: Weak formulation for Identifying
+    This function returns the support identified by WeakIdent. See details in paper "WeakIdent: Weak formulation for Identifying
     Differential Equation using Narrow-fit and Trimming" by Mengyi Tang, Wenjing Liao, Rachel Kuske and Sung Ha Kang
 
     Note: There is another version (2.0) of this function coming very soon which reduced cpu by caching the considered supports.
@@ -927,8 +837,8 @@ def weak_ident_feature_selection(w: np.array,
         k (np.array): maximum allowed sparsity level.
         s_rhs (np.array): scale vector s for rhs features, array of shape (L, ).
         s_lhs (np.float64): scale number for lhs feature (u_t).
-        w_nar_tilda (np.array): \Tilda{W}_narrow, arrow normalized feature matrix, array of shape (NxNt, L).
-        b_nar_tilda (np.array): \Tilda{b}_narrow, arrow normalized dynamic variable, array of shape (NxNt, 1).
+        w_nar_tilda (np.array): \Tilda{W}_narrow, error normalized feature matrix, array of shape (NxNt, L).
+        b_nar_tilda (np.array): \Tilda{b}_narrow, error normalized dynamic variable, array of shape (NxNt, 1).
         tau (float, optional): trimming score. Defaults to 0.05.
 
     Returns:
@@ -940,7 +850,9 @@ def weak_ident_feature_selection(w: np.array,
     s_lhs_one_var = s_lhs[num_var]
     b_nar_tilda_one_var = b_nar_tilda[:, num_var].reshape(-1, 1)
 
+    # this variable can be used to control whether you want to display the trimming process.
     display_tex = False
+
     support_list = {}
     cv_err_list = []
     w_column_norm = np.linalg.norm(w, axis=0).reshape(1, -1)
@@ -1055,10 +967,15 @@ def narrow_fit(w: np.array, b: np.array, support: np.array, s_rhs: np.array,
                s_lhs: np.float64) -> np.array:
     """
     This function perform narrow least square fit for the problem wb = c.
+    Notice that here w and c have to be error normalized features. Rescaling step should be done before this
+    function is called. Narrow-fit is proposed in WeakIdent to help increase the accuracy of coefficients. A 
+    hyghly dynamic region is found and scaling matrix is calculated to compute error normalized feature matrix 
+    and normalized dynamic variable.
+
     Args:
 
-        w (np.array): \Tilda{W}_narrow, arrow normalized feature matrix, array of shape (NxNt, L).
-        b (np.array): \Tilda{b}_narrow, arrow normalized dynamic variable, array of shape (NxNt, 1).
+        w (np.array): \Tilda{W}_narrow, error normalized feature matrix, array of shape (NxNt, L).
+        b (np.array): \Tilda{b}_narrow, error normalized dynamic variable, array of shape (NxNt, 1).
         support (np.array): a support vector that stores the index of candiate features for each variable.
         s_rhs (np.array): scale vector s for rhs features, array of shape (L, ).
         s_lhs (np.float64): scale number for lhs feature (u_t).
@@ -1074,7 +991,7 @@ def narrow_fit(w: np.array, b: np.array, support: np.array, s_rhs: np.array,
 def compute_trim_score(w_column_norm: np.array, support: np.array,
                        c_pred: np.array) -> np.array:
     """
-    This function computes the trimming score vector for given support and coefficient values
+    This function computes the trimming score vector for given support and coefficient values.
     Args:
         w_column_norm (np.array): column norm vector of feature matrix w
         support (np.array): a support vector that stores the index of candiate features for each variable.
@@ -1091,7 +1008,8 @@ def compute_trim_score(w_column_norm: np.array, support: np.array,
 def subspace_persuit(phi: np.array, b: np.array, k: int) -> np.array:
     """
     This function finds the support for a sparse vector c such that phi * x = b where k numbers in c 
-    are nonzero. 
+    are nonzero. Note: Subspace Persuit is a greedy algorithm which minimizes residual error when searching
+    for a support.
 
     Args:
         phi (np.array): array of shape (N, L)
@@ -1172,6 +1090,4 @@ def find_idx_of_interesting_feature(n: int, dim: int,
         elif n == 2 and dim == 2:
             idx = np.array([[0, 2, 0, 1, 0], [2, 0, 0, 1, 0], [0, 2, 1, 0, 0],
                             [2, 0, 1, 0, 0], [2, 1, 1, 0, 0], [1, 2, 0, 1, 0]])
-            # [3,0,1,1,0], \ # if not using cross derivative, then exclude this feature
-            # [0,3,1,1,0]] \ # if not using cross derivative, then exclude this feature
     return idx
