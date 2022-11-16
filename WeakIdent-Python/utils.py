@@ -893,3 +893,68 @@ def write_identification_err_table(c_true, idx_highly_dynamic, w, b, c_pred):
     }
     df_errs = pd.DataFrame(data=d_errs)
     return df_errs
+
+
+def write_output_tables(num_of_variables: int, c_true: np.array, dim_x: int,
+                        is_1d_ode: bool, dict_list: np.array,
+                        lhs_ind: np.array, idx_highly_dynamic: np.array,
+                        w: np.array, b: np.array, c_pred: np.array):
+    """This function write output tables as identification results.
+
+    Args:
+        num_of_variables (int): total number of variables.
+        c_true (np.array): true coefficient vector.
+        dim_x (int): spatial dimension of given data.
+        is_1d_ode (bool): whether or not given data is 1d ode data.
+        dict_list (np.array): a list of feature in the dictioinary.
+        lhs_ind (np.array): index of lhs features.
+        idx_highly_dynamic (np.array): row index of features located in highly dynamic region
+        w (np.array): feature matrix (rhs)
+        b (np.array): dynamic variable (lhs)
+        c_pred (np.array): predicted coefficient vector
+
+    Returns:
+    Tuple[pd.core.frame.DataFrame, pd.core.frame.DataFrame, pd.core.frame.DataFrame, float]: 
+        equation table, identification error table,  coefficient vector table,
+    """
+    latex_tags_lhs, latex_tags_rhs = build_feature_latex_tags(
+        num_of_variables, dim_x, is_1d_ode, dict_list, lhs_ind)
+    df_eqns = write_true_and_identified_equations(c_true, c_pred,
+                                                  latex_tags_lhs,
+                                                  latex_tags_rhs)
+    df_coe = write_coefficient_table(num_of_variables, c_true, latex_tags_lhs,
+                                     latex_tags_rhs, c_pred)
+    df_errs = write_identification_err_table(c_true, idx_highly_dynamic, w, b,
+                                             c_pred)
+    return df_eqns, df_coe, df_errs
+
+def build_feature_latex_tags(num_of_variables: int, dim_x: int,
+                             is_1d_ode: bool, dict_list: np.array,
+                             lhs_ind: np.array):
+    """
+    This function will build str tag for each lhs and rhs feature.
+
+    Args:
+        num_of_variables (int): number of variable
+        dim_x (int): number of spatial dimension
+        is_1d_ode (bool): whether or not given data is 1d ode data.
+        dict_list(np.ndarray): array of shape (L + n, n + dim_x + 1). Here each row represents a feature,
+                               column 1 - column n represents the degree of monomial for each variable
+                               column n+1 - column n+dim_x represents the order of partial derivatives 
+                               along each spatial domain
+                               column n+dim_x+1 represents the order of partial derivatives along temporal
+                               domain. We take 0 or 1 in WeakIdent.
+        lhs_ind(np.ndarray): shape of (n,)
+
+    Returns:
+        tags_lhs(list): a list of string tag for lhs feature(s)
+        tags_rhs(list): a list of string tag for rhs feature(s)
+    """
+    if is_1d_ode:
+        tags_lhs, tags_rhs = build_tag_1d_ode(num_of_variables, dict_list,
+                                              lhs_ind)
+    else:
+        tags_lhs, tags_rhs = build_tag_de(num_of_variables, dim_x, dict_list,
+                                          lhs_ind)
+
+    return tags_lhs, tags_rhs
