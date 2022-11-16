@@ -1,4 +1,4 @@
-from utils import build_feature_vector_tags, compute_test_function_para, circshift, drange, compute_err_inf, compute_err_l2, compute_err_res, compute_tpr_ppv, two_piece_fit_v2, build_tag_1d_ode, build_tag_de, build_eqn_str, least_square_adp, set_hist_bins, set_sparsity_level, write_true_and_identified_equations, write_coefficient_table, write_identification_err_table
+from utils import build_feature_vector_tags, compute_test_function_para, circshift, drange, compute_err_inf, compute_err_l2, compute_err_res, compute_tpr_ppv, two_piece_fit_v2, build_tag_1d_ode, build_tag_de, least_square_adp, set_hist_bins, set_sparsity_level, write_output_tables
 import numpy as np
 import scipy.linalg
 import numpy_indexed as npi
@@ -8,7 +8,7 @@ import time
 from typing import Tuple
 """
 
-modeling functions of weakident to predict partial/ordinary different equations.
+Modeling functions of WeakIdent to identify partial/ordinary different equations.
 
 Copyright 2022, All Rights Reserved
 Code by Mengyi Tang Rajchel
@@ -28,131 +28,156 @@ def weak_ident_pred(
     This is the main function to identify a system of partial differential equations or 
     ordinary differential equations using weak_ident. 
     More details of this work (WeakIdent) can be found through this link: https://arxiv.org/abs/2211.03134.
-    
-    For better visualization of input, I present a sample input for transport equation u_t = -u_x + 0.05u_{xx}.
+
+    For better visualization of input and output , I use an example of Transport 
+    equation with diffusions. $u_t = -u_x + 0.05u_{xx}$ in my illustration.
+    For this example, an expected good identification result should be only feature u_x 
+    and u_{xx} existing in the identified support with associated coefficient values 
+    being -1 and 0.05.
 
     Args:
-        u_hat (np.array): array of shape (n,) , this is given noisy data with n variables.
+        u_hat (np.array): array of shape (n,). This is the given noisy data with n variables.
         #################### an example input of transport eqn ######################
-        #  e.g. u_hat[0] has shape (257, 300) where each row represents a spatial   #
-        #    location x_i (i = 1,2,...,257)  and each column represents a temporal  #
-        #    point t_n (n = 1,2,...,300)                                            #
+        #  e.g. u_hat[0] has shape (257, 300) where u_hat[0][i][j] represents given #
+        #  noisy data at x = x_i and t = t_j for i = 0,1,...,256 and j = 0, 1 ,..., #
+        #  299. In this example, the given noisy data is                            #
         #    u_hat = [array([[-0.00753292,  0.00909885, ...,  -0.02589293],...,     #
         #             [-0.01762188, -0.00837559,  ...,  0.04464247]])      ]        #
         #############################################################################
 
-        xs (np.array): array of shape (dim_x + 1,), spacing of given data.
+        xs (np.array): array of shape (dim_x + 1,). This is the spacing of given data.
         #################### an example input of transport eqn ######################
+        # In this case, dim_x = 1, hence xs can be expressed by                     #
         # xs = [(x_1, x_2, ...)^T, (t_1, t_2,...)].                                 #
-        #    [array([[0.        ],[0.00390625],[0.0078125 ], ..., [1.        ]])    #
+        # xs = [array([[0.        ],[0.00390625],[0.0078125 ], ..., [1.        ]])  #
         #    array([[0.    , 0.0001, 0.0002, ... 0.0299]])      ]                   #
+        # Remark: in the case of dim_x = 2, xs = [(x_1, x_2, ...)^T,                #
+        #                                   (x_1, x_2, ...)^T, (t_1, t_2,...)].     #
+        #  In this work, equal spacing is required for given data.                  #
         #############################################################################
 
-        true_coefficients: array of shape (n,).
+        true_coefficients: array of shape (n,). This variable stores the true coefficient 
+        along with appropriate tags for given data. This information is used for validating
+        identification results. true_coefficients[i] has shape (l, n + dim_x + 1). 
         #################### an example input of transport eqn ######################
         # true_coefficient =  [array([[ 1.  ,  1.  ,  0.  , -1.  ],                 #
         #                             [ 1.  ,  2.  ,  0.  ,  0.05]])]               #
         # true_coefficient[0] denotes true feature - u_x                            #
         # true_coefficient[1] denotes true feature + 0.05 u_{xx}                    #
+        # Remark: the first n column denote the monomial base power of each feature.#
+        # The n+1 - n+dim_x the column denotes the derivative of monomial along x   #
+        # direction. The n+ column denotes the derivative of monommial along t      #
+        # direction. The last column denotes the coefficient value for each feature #
         #############################################################################
 
         max_dx (int): maximum total order of partial derivatives.
         max_poly (int): maximum total order of monomials.
         #################### an example input of transport eqn ######################
-        # max_dx = 6, max_poly = 6                                                  #
-        # There are 43 features in the dictionary. They are 1, u, u_x, u_{xx},...   #
-        # u_{xxxxxx}, u^2, (u^2)_x, ..., (u^2)_{xxxxxx}, ..., u^6, ....,            # 
-        # (u^6)_{xxxxxx}                                                            #
+        # max_dx = 6, max_poly = 6. Normally we let max_dx = 4-6 and max_poly = 3-6 #
+        # e.g. In this example, there are 43 features in the dictionary.            #
+        # They are 1, u, u_x, u_{xx}, ..., u_{xxxxxx}, u^2, (u^2)_x, ...,           #
+        # (u^2)_{xxxxxx}, ..., u^6, ....,  (u^6)_{xxxxxx}                           #
         #############################################################################
 
         skip_x (int): number of skipped steps in spatial domain when downsampling 
-                      feature matrix.
+        feature matrix.
         skip_t (int): number of skipped steps in temporal domain when downsampling 
-                    feature matrix.
+        feature matrix.
         #################### an example input of transport eqn ######################
-        # skip_x = 5, skip_t = 6                                                    #
-        # To improve computation efficiency, we downsample a built feature matrix W #
-        # with rate 1/5 and 1/5 in space and time respectively                      #
+        # skip_x = 5, skip_t = 6 .                                                   #
+        # To improve computation efficiency, we downsample the built feature matrix #
+        # W  with rate 1/5 and 1/6 in space and time respectively.                  #
         #############################################################################
 
-        use_cross_der (bool): whether allow partial derivatives.
+        use_cross_der (bool): whether we allow partial derivatives exist in the dictionary.
         #################### an example input of transport eqn ######################
-        # use_cross_der = False                                                     #
+        # use_cross_der = False .                                                   #
         # use_cross_der is consider only when we have 2d spatial domain. Transport  #
         # equation is on 1d. Hence we use use_cross_der = False here.               #
         #############################################################################
 
         tau (float): trimming threshold.
         #################### an example input of transport eqn ######################
-        # tau = 0.05                                                                #
+        # tau = 0.05.                                                               #
         # tau is the trimming score for a given support A recovered from Subspace   #
-        # Persuit. We trim the support  by removing features with contributions     #
-        # below a threshold. The default reate is 0.05.                             #
+        # Persuit. We trim the support by removing features with contributions      #
+        # below a threshold. The default number is 0.05.                            #
         #############################################################################     
-        #    
+
     Returns:
         Tuple[pd.core.frame.DataFrame, pd.core.frame.DataFrame, pd.core.frame.DataFrame, float]: 
-        identification error table,  equation table, coefficient vector table,
+        Identification error table,  Equation table, Coefficient vector table,
         running time   
         #### an example output of df_identification_errors for transport eqn #######
-        ╒════╤════════════╤════════════════╤═════════════╤═════════╤═════════╕
-        │    │      $e_2$ │   $e_{\infty}$ │   $e_{res}$ │   $tpr$ │   $ppv$ │
-        ╞════╪════════════╪════════════════╪═════════════╪═════════╪═════════╡
-        │  0 │ 0.00835162 │      0.0124345 │    0.278877 │       1 │       1 │
-        ╘════╧════════════╧════════════════╧═════════════╧═════════╧═════════╛   
+        +----+-----------+----------------+-------------+---------+---------+
+        |    |     $e_2$ |   $e_{\infty}$ |   $e_{res}$ |   $tpr$ |   $ppv$ |
+        +====+===========+================+=============+=========+=========+
+        |  0 | 0.0102789 |      0.0102866 |    0.263103 |       1 |       1 |
+        +----+-----------+----------------+-------------+---------+---------+ 
         Remark: here $e_2$ denotes relative l_2 norm error, 
                      $e_{\infty}$ denotes relative l_infty norm error,
                      $e_{res}$ denotes residual error,
                      $tpr$ denotes true positive rate, and
                      $ppv$ denotes positive predictive rate.
+                A good recovery should have small $e_2$ and $tpr=1$, $ppv=1$. 
+                This means a correct support is found with accurate coefficients.
 
         #### an example output of df_identified_eqns for transport eqn #############
-        ╒════╤═════════════════════════════════╤════════════════════════════════════╕
-        │    │ True equation                   │ Predicted equation                 │
-        ╞════╪═════════════════════════════════╪════════════════════════════════════╡
-        │  0 │ u_t = - 1.0 u_{x} + 0.05 u_{xx} │ u_t = - 1.008 u_{x} + 0.049 u_{xx} │
-        ╘════╧═════════════════════════════════╧════════════════════════════════════╛
+        +----+---------------------------------+----------------------------------+
+        |    | True equation                   | Predicted equation               |
+        +====+=================================+==================================+
+        |  0 | u_t = - 1.0 u_{x} + 0.05 u_{xx} | u_t = - 0.99 u_{x} + 0.05 u_{xx} |
+        +----+---------------------------------+----------------------------------+
 
         #### an example output of df_coefficient_values for transport eqn #############
-                    ╒════╤════════════════╤════════════╤════════════╕
-                    │    │ feature        │   true u_t │   pred u_t │
-                    ╞════╪════════════════╪════════════╪════════════╡
-                    │  0 │ 1              │       0    │  0         │
-                    ├────┼────────────────┼────────────┼────────────┤
-                    │  1 │ u              │       0    │  0         │
-                    ├────┼────────────────┼────────────┼────────────┤
-                    │  2 │ u_{x}          │      -1    │ -1.00515   │
-                    ├────┼────────────────┼────────────┼────────────┤
-                    │  3 │ u_{xx}         │       0.05 │  0.0502238 │
-                    ├────┼────────────────┼────────────┼────────────┤
-                                    .......
-                    ├────┼────────────────┼────────────┼────────────┤
-                    │ 42 │ (u^6)_{xxxxxx} │       0    │  0         │
-                    ╘════╧════════════════╧════════════╧════════════╛
+                +----+----------------+------------+------------+
+                |    | feature        |   true u_t |   pred u_t |
+                +====+================+============+============+
+                |  0 | 1              |       0    |  0         |
+                +----+----------------+------------+------------+
+                |  1 | u              |       0    |  0         |
+                +----+----------------+------------+------------+
+                |  2 | u_{x}          |      -1    | -0.989713  |
+                +----+----------------+------------+------------+
+                |  3 | u_{xx}         |       0.05 |  0.0496751 |
+                +----+----------------+------------+------------+
+                |  4 | u_{xxx}        |       0    |  0         |
+                                    ......
+                +----+----------------+------------+------------+
+                | 42 | (u^6)_{xxxxxx} |       0    |  0         |
+                +----+----------------+------------+------------+
     """
     start_time = time.time()
+
+    # determin number of variables of given data.
     num_of_variables = u_hat.shape[0]
+
+    # determine spatial dimension of given data.
     dim_x = len(u_hat[0].shape) - 1
+
+    # determine whether given dadta is 1-dimensional ODE.
     is_1d_ode = u_hat[0].shape[0] == 1
-    # build feature tags for each left-hand-side feature and right-hand-side feature
+
+    # build feature tags for each left-hand-side feature and right-hand-side feature.
     dictionary_list, idx_of_lhs_feature, idx_of_rhs_feature, true_coefficient_vector = build_feature_vector_tags(
         num_of_variables, dim_x, max_dx, max_poly, use_cross_der,
         true_coefficients, is_1d_ode)
 
-    # build feature matrix including lhs and rhs features and corresponding scale matrix
+    # build feature matrix including left-hand-side feature and right-hand-side features and corresponding scale matrix
     feature_matrix, scale_matrix = build_feature_matrix_and_scale_matrix(
         u_hat, xs, max_dx, skip_x, skip_t, is_1d_ode, dictionary_list)
 
-    # find a highly dynamic region from given data. idx_highly_dynamic stores the row index of feature
-    # matrix that contains spatial-temporal features inside highly dynamic region
-    idx_highly_dynamic = find_highly_dynamic_region(dictionary_list,
-                                                    scale_matrix, is_1d_ode,
-                                                    num_of_variables, dim_x)
-    # identify the differential equation
+    # find a highly dynamic region from given data. idx_highly_dynamic_region stores the row index of feature
+    # matrix that contains spatial-temporal features inside a highly dynamic region. This step helps with better 
+    # coefficient recover and idx_highly_dynamic_region will be used during narrow-fit.
+    idx_highly_dynamic_region = find_highly_dynamic_region(dictionary_list,
+                                                           scale_matrix, is_1d_ode,
+                                                           num_of_variables, dim_x)
+    # identify differential equation(s) from feature matrix.
     w, b, c_pred = diff_eqn_identification(tau, num_of_variables, dim_x,
                                            is_1d_ode, idx_of_lhs_feature,
                                            idx_of_rhs_feature, feature_matrix,
-                                           scale_matrix, idx_highly_dynamic)
+                                           scale_matrix, idx_highly_dynamic_region)
 
     run_time = time.time() - start_time
 
@@ -164,7 +189,7 @@ def weak_ident_pred(
 
     df_identified_eqns, df_coefficient_values, df_identification_errors = write_output_tables(
         num_of_variables, true_coefficient_vector, dim_x, is_1d_ode,
-        dictionary_list, idx_of_lhs_feature, idx_highly_dynamic, w, b, c_pred)
+        dictionary_list, idx_of_lhs_feature, idx_highly_dynamic_region, w, b, c_pred)
 
     return df_identification_errors, df_identified_eqns, df_coefficient_values, run_time
 
@@ -174,7 +199,7 @@ def build_feature_matrix_and_scale_matrix(
         is_1d_ode: bool, dict_list: np.array) -> Tuple[np.array, np.array]:
     '''
     This function build feature matrix and scale matrix for given data.
-    
+
     Args:
         u_hat (np.array): array of shape (n,) , this is given noisy data with n variables.
         xs (np.array): array of shape (dim_x + 1,), spacing of given data.
@@ -189,7 +214,7 @@ def build_feature_matrix_and_scale_matrix(
                             domain. We take 0 or 1 for this value in WeakIdent.
     Returns:
         Tuple[np.array, np.array]: feature matrix W and scale matrix S (including lhs).                        
-                        
+
     '''
     m_x, m_t, p_x, p_t = compute_test_function_para(u_hat, xs, max_dx)
     dx = 0
@@ -324,72 +349,6 @@ def compute_rescaled_features(
     w_tilda = w * scales_rhs_features
     w_narrow_tilda = w_tilda[idx_highly_dynamic, :]
     return w, w_tilda, w_narrow_tilda
-
-
-def write_output_tables(num_of_variables: int, c_true: np.array, dim_x: int,
-                        is_1d_ode: bool, dict_list: np.array,
-                        lhs_ind: np.array, idx_highly_dynamic: np.array,
-                        w: np.array, b: np.array, c_pred: np.array):
-    """This function write output tables as identification results.
-
-    Args:
-        num_of_variables (int): total number of variables.
-        c_true (np.array): true coefficient vector.
-        dim_x (int): spatial dimension of given data.
-        is_1d_ode (bool): whether or not given data is 1d ode data.
-        dict_list (np.array): a list of feature in the dictioinary.
-        lhs_ind (np.array): index of lhs features.
-        idx_highly_dynamic (np.array): row index of features located in highly dynamic region
-        w (np.array): feature matrix (rhs)
-        b (np.array): dynamic variable (lhs)
-        c_pred (np.array): predicted coefficient vector
-
-    Returns:
-    Tuple[pd.core.frame.DataFrame, pd.core.frame.DataFrame, pd.core.frame.DataFrame, float]: 
-        equation table, identification error table,  coefficient vector table,
-    """
-    latex_tags_lhs, latex_tags_rhs = build_feature_latex_tags(
-        num_of_variables, dim_x, is_1d_ode, dict_list, lhs_ind)
-    df_eqns = write_true_and_identified_equations(c_true, c_pred,
-                                                  latex_tags_lhs,
-                                                  latex_tags_rhs)
-    df_coe = write_coefficient_table(num_of_variables, c_true, latex_tags_lhs,
-                                     latex_tags_rhs, c_pred)
-    df_errs = write_identification_err_table(c_true, idx_highly_dynamic, w, b,
-                                             c_pred)
-    return df_eqns, df_coe, df_errs
-
-
-def build_feature_latex_tags(num_of_variables: int, dim_x: int,
-                             is_1d_ode: bool, dict_list: np.array,
-                             lhs_ind: np.array):
-    """
-    This function will build str tag for each lhs and rhs feature.
-
-    Args:
-        num_of_variables (int): number of variable
-        dim_x (int): number of spatial dimension
-        is_1d_ode (bool): whether or not given data is 1d ode data.
-        dict_list(np.ndarray): array of shape (L + n, n + dim_x + 1). Here each row represents a feature,
-                               column 1 - column n represents the degree of monomial for each variable
-                               column n+1 - column n+dim_x represents the order of partial derivatives 
-                               along each spatial domain
-                               column n+dim_x+1 represents the order of partial derivatives along temporal
-                               domain. We take 0 or 1 in WeakIdent.
-        lhs_ind(np.ndarray): shape of (n,)
-
-    Returns:
-        tags_lhs(list): a list of string tag for lhs feature(s)
-        tags_rhs(list): a list of string tag for rhs feature(s)
-    """
-    if is_1d_ode:
-        tags_lhs, tags_rhs = build_tag_1d_ode(num_of_variables, dict_list,
-                                              lhs_ind)
-    else:
-        tags_lhs, tags_rhs = build_tag_de(num_of_variables, dim_x, dict_list,
-                                          lhs_ind)
-
-    return tags_lhs, tags_rhs
 
 
 def compute_discrete_phi(m: int, d: int, p: int) -> np.array:
@@ -1157,7 +1116,7 @@ def subspace_persuit(phi: np.array, b: np.array, k: int) -> np.array:
     r = b - np.matmul(phi_lda, x)
     res = np.linalg.norm(r, 2)
     if res < 10**(-12):
-        X = np.zeros(n)  # it should be a column
+        X = np.zeros(n)
         X[lda] = np.transpose(x)
         supp = [i for i in range(phi.shape[1]) if X[i] != 0]
         return np.array(supp)
@@ -1167,12 +1126,12 @@ def subspace_persuit(phi: np.array, b: np.array, k: int) -> np.array:
         res_old = res
         cv = np.absolute(np.matmul(np.transpose(r), phi))
         cv_index = np.argsort(-cv).flatten()
-        Sga = np.union1d(lda, cv_index[:k + 1])
-        Phi_Sga = phi[:, Sga]
-        x_temp = least_square_adp(np.matmul(np.transpose(Phi_Sga), Phi_Sga),
-                                  np.matmul(np.transpose(Phi_Sga), b))
+        sga = np.union1d(lda, cv_index[:k + 1])
+        phi_sga = phi[:, sga]
+        x_temp = least_square_adp(np.matmul(np.transpose(phi_sga), phi_sga),
+                                  np.matmul(np.transpose(phi_sga), b))
         x_temp_index = np.argsort(-np.absolute(x_temp.flatten())).flatten()
-        lda = Sga[x_temp_index[:k + 1]]
+        lda = sga[x_temp_index[:k + 1]]
         phi_lda = phi[:, lda]
         usedlda[lda] = 1
         x = least_square_adp(np.matmul(np.transpose(phi_lda), phi_lda),
