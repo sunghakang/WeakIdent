@@ -46,16 +46,16 @@ def run():
 
     print(
         "\n ------------- coefficient vector overview ------noise-signal-ratio : %s  -------" % (args.sigma_SNR))
-    print(tabulate(coe_table, headers= coe_table.columns, tablefmt="fancy_grid"))
+    print(tabulate(coe_table, headers= coe_table.columns, tablefmt="grid"))
     print(
-        "\n ------------- equation overniew ------noise-signal-ratio : %s  -------------------"
+        "\n ------------- equation overview ------noise-signal-ratio : %s  -------------------"
         % (args.sigma_SNR))
-    print(tabulate(eqn_table, headers= eqn_table.columns, tablefmt="fancy_grid"))
+    print(tabulate(eqn_table, headers= eqn_table.columns, tablefmt="grid"))
     
     print("\n ------------------------------ CPU time: %s seconds ------------------------------" %
           (round(run_time, 2)))
     print("\n Identification error for", args.equation, "from WeakIdent: ")
-    print(tabulate(identification_err_table, headers= identification_err_table.columns, tablefmt="fancy_grid"))
+    print(tabulate(identification_err_table, headers= identification_err_table.columns, tablefmt="grid"))
 
 if __name__ == '__main__':
     main()
