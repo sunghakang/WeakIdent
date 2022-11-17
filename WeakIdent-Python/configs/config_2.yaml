@@ -1,11 +1,11 @@
 libraray_arg:
   max_poly   :  4
   max_dt     :  1
-  max_dx     :  5
+  max_dx     :  4
   use_cross_der : False
 
 Noise:
-  sigma_SNR  :  0.05
+  sigma_SNR  :  0
   
 Subsampling:
   stride_x    : 12
