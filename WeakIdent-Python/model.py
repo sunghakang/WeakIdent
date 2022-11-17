@@ -2,7 +2,7 @@ from utils.feature_library_building import build_feature_vector_tags, compute_te
 from utils.output_writing import write_output_tables
 from utils.calculations import circshift, two_piece_fit_v2, least_square_adp, compute_cross_validation_error, compute_cross_validation_err_v2
 
-from utils.others import set_hist_bins, set_sparsity_level
+from utils.helpers import set_hist_bins, set_sparsity_level
 import numpy as np
 import scipy.linalg
 import numpy_indexed as npi
