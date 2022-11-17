@@ -9,7 +9,9 @@ from tabulate import tabulate
 Main function of weakident to predict partial/ordinary different equations.
 
 Copyright 2022, All Rights Reserved
+
 Code by Mengyi Tang Rajchel
+
 For Paper, "WeakIdent: Weak formulation for Identifying
 Differential Equation using Narrow-fit and Trimming"
 by Mengyi Tang, Wenjing Liao, Rachel Kuske and Sung Ha Kang
