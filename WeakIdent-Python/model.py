@@ -77,7 +77,7 @@ def weak_ident_pred(
         max_dx (int): maximum total order of partial derivatives.
         max_poly (int): maximum total order of monomials.
         #################### an example input of transport eqn ######################
-        # max_dx = 6, max_poly = 6. Normally we let max_dx = 4-6 and max_poly = 3-6 #
+        # max_dx = 6, max_poly = 6. Suggested values: max_dx = 4-6, max_poly = 3-6  #
         # e.g. In this example, there are 43 features in the dictionary.            #
         # They are 1, u, u_x, u_{xx}, ..., u_{xxxxxx}, u^2, (u^2)_x, ...,           #
         # (u^2)_{xxxxxx}, ..., u^6, ....,  (u^6)_{xxxxxx}                           #
@@ -88,23 +88,23 @@ def weak_ident_pred(
         skip_t (int): number of skipped steps in temporal domain when downsampling 
         feature matrix.
         #################### an example input of transport eqn ######################
-        # skip_x = 5, skip_t = 6 .                                                   #
-        # To improve computation efficiency, we downsample the built feature matrix #
+        # skip_x = 5, skip_t = 6 .                                                  #
+        # To improve computation efficiency, the built feature matrix is downsampled#
         # W  with rate 1/5 and 1/6 in space and time respectively.                  #
         #############################################################################
 
-        use_cross_der (bool): whether we allow partial derivatives exist in the dictionary.
+        use_cross_der (bool): whether to allow partial derivatives exist in the dictionary.
         #################### an example input of transport eqn ######################
         # use_cross_der = False .                                                   #
-        # use_cross_der is consider only when we have 2d spatial domain. Transport  #
-        # equation is on 1d. Hence we use use_cross_der = False here.               #
+        # use_cross_der is consider only when dealing with 2d spatial domain.       #
+        # Transport equation is on 1d. Hence, use_cross_der = False in this example.#
         #############################################################################
 
         tau (float): trimming threshold.
         #################### an example input of transport eqn ######################
         # tau = 0.05.                                                               #
         # tau is the trimming score for a given support A recovered from Subspace   #
-        # Persuit. We trim the support by removing features with contributions      #
+        # Persuit. The support is trimmed by removing features with contributions   #
         # below a threshold. The default number is 0.05.                            #
         #############################################################################     
 
@@ -213,7 +213,7 @@ def build_feature_matrix_and_scale_matrix(
                             column 1 - column n represent the degree of monomial for each feature,
                             column n+1 - column n+dim_x represent the order of partial derivatives along each spatial domain,
                             and column n+dim_x+1 represents the order of partial derivatives along temporal
-                            domain. We take 0 or 1 for this value in WeakIdent.
+                            domain.  
         is_1d_ode (bool): whether given data is 1d-ode type.
     Returns:
         Tuple[np.array, np.array]: feature matrix W and scale matrix S (including lhs).                        
@@ -247,8 +247,7 @@ def find_highly_dynamic_region(dict_list: np.array, s_b: np.array,
                                Column 1 - column n represent the degree of monomial for each feature,
                                column n+1 - column n+dim_x represent the order of partial derivatives 
                                along each spatial domain, and column n+dim_x+1 represents the order of 
-                               partial derivatives along temporal domain. We take 0 or 1 for this value 
-                               in WeakIdent.
+                               partial derivatives along temporal domain. 
         idx_interesting_features (np.array): array of shape (m, n + 2) where each row provides the a tag 
                                              for an interesting feature.
         s_b (np.array): scale matrix S (inlcuding lhs).
@@ -409,14 +408,14 @@ def weak_ident_feature_selection(w: np.array,
             trim_score = compute_trim_score(w_column_norm, support, c_pred)
             if display_tex:
                 print('For a smaller support  ', support, ',')
-                print('we have trimming score to be ', trim_score)
+                print('the trimming score vector is ', trim_score)
             cv_err_list[i] = compute_cross_validation_err_v2(
                 support, w_tilda, b_tilda_one_var)
             support_list[i] = support
             if display_tex:
                 print(
-                    'We update the current smallest residual error for sparsity level',
-                    i + 1, ' to be ', cv_err_list[i])
+                    'The current smallest residual error for sparsity level',
+                    i + 1, ' is updated to be ', cv_err_list[i])
     cv_err_list = np.array(cv_err_list)
     cross_idx = np.argmin(cv_err_list)
     support_pred = support_list[int(cross_idx)]
@@ -630,7 +629,7 @@ def compute_feature_and_scale_matrix_ode(
     This function computes the feature matrix W and scale matrix S for both lhs and rhs features for ODEs.
 
     Note: (1) the current version of ode equations refer to 1d ode problems where spatial derivatives do not exits.
-          (2) for odes, we consider the scale matrix S to be identical to feature matrix W.
+          (2) for odes, the scale matrix S is considered to be identical to feature matrix W.
     Args:
         m (int): one-side length of a local integration area.
         p (int): parameter in the test function.
@@ -639,7 +638,7 @@ def compute_feature_and_scale_matrix_ode(
                                column 1 - column n represents the degree of monomial in each feature
                                column n + 1 has 0s.
                                column n + 2 represents the order of partial derivatives along temporal
-                               domain. We take 0 or 1 for this value in WeakIdent.
+                               domain.  
         u_hat (np.array): array of shape (n,) (given noisy data).
         dt (np.array): delta t (temporal increase) of given data .
 
@@ -678,7 +677,7 @@ def compute_feature_and_scale_matrix_pde(
                                column n+1 - column n+dim_x represents the order of partial derivatives 
                                along each spatial domain,
                                and column n+dim_x+1 represents the order of partial derivatives along temporal
-                               domain. We take 0 or 1 in WeakIdent.
+                               domain.  
         u_hat (np.array): given data of shape (n,).
         dx (np.array): delta x (spatial increase) of given data.
         dt (np.array): delta t (temporal increase) of given data.
@@ -713,7 +712,7 @@ def compute_w_ode(dict_list: np.array, u_hat: np.array, fft_phis: np.array,
                                column 1 - column n represents the degree of monomial in each feature
                                column n + 1 has 0s.
                                column n + 2 represents the order of partial derivatives along temporal
-                               domain. We take 0 or 1 for this value in WeakIdent.
+                               domain.  
         u_hat (np.array): given noisy data with shape (n,).
         fft_phis (np.array): array of shape (2, mathbbNx). This is the fast fourier transform of the test function and
                              it's first order derivative. 
@@ -759,7 +758,7 @@ def compute_w(dict_list: np.array, u_hat: np.array, fft_phis: np.array,
                                column n+1 - column n+dim_x represents the order of partial derivatives 
                                along each spatial domain,
                                and column n+dim_x+1 represents the order of partial derivatives along temporal
-                               domain. We take 0 or 1 in WeakIdent.
+                               domain.
         u_hat (np.array): array of shape (n,) (given data).
         fft_phis (np.array): array of shape (max_dx+1, mathbbNx). This is the fft of a test functions and it's derivatives. 
         subsampling_idx (np.array): array of shape (Nx , ) which stores the index of subsampled feature matrix.
@@ -851,7 +850,7 @@ def compute_s_v2(w: np.array, dict_list: np.array, u_hat: np.array,
                                column n+1 - column n+dim_x represents the order of partial derivatives 
                                along each spatial domain, 
                                and column n+dim_x+1 represents the order of partial derivatives along temporal
-                               domain. We take 0 or 1 in WeakIdent.
+                               domain. 
         u_hat (np.array): array of shape (n,) (given noisy data).
         fft_phis (np.array): array of shape (max_dx+1, mathbbNx). This is the fast fourier transform of a test function
                              and it's derivatives. 
@@ -949,7 +948,7 @@ def conv_fft_v2(fu: np.array, fft_phi: np.array,
     """
     This function takes f(u) and fft(d^i(phi)) as input and returns the convolution u * d^i(phi) as
     as a result of weak feature.
-    Note: this function is called only when we have 1d ode systems. See conv_fft for multi-dimensional
+    Note: this function is called only when the sytem to be identified is 1d ode. See conv_fft for multi-dimensional
           convlution for the case of PDEs or multi-dimensional ODEs. 
 
     Args:
