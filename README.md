@@ -3,13 +3,17 @@ Script for predicting differential equations using WeakIdent.
 
 This repository provides implementation details of WeakIdent using Matlab and using Python. 
 
+Script for **identifying differential equations** using WeakIdent.
+
+This repo provides implementation details of WeakIdent using Python. 
+
 Copyright 2022, All Rights Reserved
 
-Code author:  Mengyi Tang Rajchel
+**Code author:  Mengyi Tang Rajchel**
 
-For Paper, "[WeakIdent: Weak formulation for Identifying Differential Equation using Narrow-fit and Trimming](https://arxiv.org/abs/2211.03134)" by Mengyi Tang, Wenjing Liao, Rachel Kuske and Sung Ha Kang.
+For Paper, "[:link:WeakIdent: Weak formulation for Identifying Differential Equation using Narrow-fit and Trimming](https://arxiv.org/abs/2211.03134)" by Mengyi Tang, Wenjing Liao, Rachel Kuske and Sung Ha Kang.
 
-If you found WeakIdent useful in your research, please consider cite 
+:blush: If you found WeakIdent useful in your research, please consider cite us:
 
 ```
 @misc{tang2022weakident,
@@ -22,9 +26,10 @@ If you found WeakIdent useful in your research, please consider cite
 }
 ```
 
+## What  does WeakIdent do?
+WeakIdent is a general and robust framework to recover differential equations using a weak formulation, for both ordinary and partial differential equations (ODEs and PDEs). 
+Noisy time series data are taken in with spacing as input and output a governing equation for this data.
 
-## Goal
-This works focused on data-driven identifcation of differential equations when the given data are corrupted by noise. When the governing diferential equation is a linear combination of various differential terms, the identifcation problem can be formulated as solving a linear system, with the feature matrix consisting of linear and nonlinear terms multiplied by a coeffcient vector. The goal is to identify the correct terms that form the equation to capture the dynamics of the given data. We propose a general and robust framework to recover differential equations using a weak formulation, for both ordinary and partial di erential equations (ODEs and PDEs).  We use weak formulation to facilitate an effcient and robust way to handle noise. For a robust recovery against noise and the choice of hyper-parameters, we introduce two new mechanisms, narrow-fit and trimming, for the coeffcient support and value recovery, respectively. 
 
 ## The structure of this repository.
 ```
@@ -49,13 +54,59 @@ run `main.m` to use WeakIdent on partial differential equations and and ode syst
 ## WeakIdent - Python
 
 ### Environment set-up
-run `conda env create -f environment.yml` to create the environment.
 
-run `conda activate test_env1` to activate the environment.
+**Required packages**
+`sys, yaml, argparse, time, typing, pandas, tabular, numpy, numpy_index, Scipy`
+
+**Set-up**
+
+[Option 1] If you do not have `conda` installed, you can use `pip install` to install the packages listed above.
+
+[Option 2] (1) run `conda env create -f environment.yml` to create the environment. (2) run `conda activate test_env1` to activate the environment.
+
+
+### Datasets
+Sample datasets from various type of equations including true coefficients. can be found in folder `dataset-Python`. For each dataset, there exists a 
+configuration file in `configs` that specifies the input argument to run WeakIdent. The following table provide equations names of each dataset:
+
+| config file  index       | Equation name      | 
+|:-------------:|-------------|
+|1     |  Transport Equation |  
+| 2     | Reaction Diffusion Equation    | 
+| 3 | Anisotropic Porous Medium (PM) Equation    |
+| 4 | Heat Equation | 
+| 5 | Korteweg-de Vires (KdV) Equation | 
+| 6 | Kuramoto-Sivashinsky (KS) Equation | 
+| 7 | Nonlinear Schrodinger (NLS) | 
+| 8 | 2D Linear System | 
+| 9 | Nonlinear System (Van der Pol) | 
+| 10 | Nonlinear System (Duffing) | 
+| 11 | Noninear System (Lotka-Volterra) | 
+|12| Nonlinear System (Lorenz) | 
+|13| Noninear System 2D (Lotka-Volterra) |
+
+We refer details of each dataset to the experimental result section in *WeakIdent: Weak formulation for Identifying Differential Equation using Narrow-fit and Trimming*
+
+**Remark**
+
+The dataset for reaction diffusion type equation and Nonlinear Lotka-Volterro equation is sligher larger (100-200 M). They are not provided in `dataset-Python`.
+-  In order to run WeakIdent on reaction diffusion type equation
+
+   [option 1] please click [here](https://www.dropbox.com/t/TKK9U1ttVwX2mfHP) to download the dataset into folder`dataset-Python`, or 
+
+   [option 2] run `simulate_reaction_diffusion_eqn.py` to simulate the dataset before running 
+`python main.py --config configs/config_2.yaml`.  
+
+- To run WeakIdent on Nonlinear System 2D (Lotka-Volterra), please run `simulate_lotka_volterra_2d_ode_eqn.py` to simulate the dataset before running `python main.py --config configs/config_13.yaml`.
 
 ### Run WeakIdent on provided datasets
+There are 13 datasets provided in `dataset-Python`. To run WeakIdent on each indivial dataset, 
+run `python main.py --config configs/config_$n$ file name$.yaml` to identify differential equation using a pre-simulated dataset specified in `configs/config_$n$.yaml`. 
 
-run `python main.py --config configs/$configuration file name$.yaml` to predict differential equation using a pre-simulated dataset. For example, to predict Transport Equation (with diffusion), run `python main.py --config configs/config_1.yaml` to see the output:
+
+**An example of running WeakIdent on Transport Equation with diffusion**
+
+Run `python main.py --config configs/config_1.yaml` to see the output:
 
 ```
 Start loading arguments and dataset for Transport Equation
@@ -84,17 +135,13 @@ Finished support trimming and narrow fit for variable no.1 . A support is found.
 │  4 │ u_{xxx}        │       0    │  0         │
 ├────┼────────────────┼────────────┼────────────┤
 │  5 │ u_{xxxx}       │       0    │  0         │
-├────┼────────────────┼────────────┼────────────┤
-│    │   ......       │     ...    │     ...    │
-├────┼────────────────┼────────────┼────────────┤
-│ 40 │ (u^6)_{xxxx}   │       0    │  0         │
-├────┼────────────────┼────────────┼────────────┤
+                      ......
 │ 41 │ (u^6)_{xxxxx}  │       0    │  0         │
 ├────┼────────────────┼────────────┼────────────┤
 │ 42 │ (u^6)_{xxxxxx} │       0    │  0         │
 ╘════╧════════════════╧════════════╧════════════╛
 
- ------------- equation overniew ------noise-signal-ratio : 0.5  -------------------
+ ------------- equation overview ------noise-signal-ratio : 0.5  -------------------
 ╒════╤═════════════════════════════════╤═══════════════════════════════════╕
 │    │ True equation                   │ Predicted equation                │
 ╞════╪═════════════════════════════════╪═══════════════════════════════════╡
@@ -109,42 +156,10 @@ Finished support trimming and narrow fit for variable no.1 . A support is found.
 ╞════╪═══════════╪════════════════╪═════════════╪═════════╪═════════╡
 │  0 │ 0.0132347 │      0.0132485 │    0.449226 │       1 │       1 │
 ╘════╧═══════════╧════════════════╧═════════════╧═════════╧═════════╛
-
 ```
 
-
-### Datasets
-We use folder `dataset-Python` to store sample dataset for multiple equations including true coefficients.
-Each configuration file in `configs` is associated with one experiments. See the following table for type of equations:
-
-| config file  index       | Equation name      | 
-|:-------------:|-------------|
-|1     |  Transport Equation |  
-| 2     | Reaction Diffusion Equation    | 
-| 3 | Anisotropic Porous Medium (PM) Equation    |
-| 4 | Heat Equation | 
-| 5 | Korteweg-de Vires (KdV) Equation | 
-| 6 | Kuramoto-Sivashinsky (KS) Equation | 
-| 7 | Nonlinear Schrodinger (NLS) | 
-| 8 | 2D Linear System | 
-| 9 | Nonlinear System (Van der Pol) | 
-| 10 | Nonlinear System (Duffing) | 
-| 11 | Noninear System (Lotka-Volterra) | 
-|12| Nonlinear System (Lorenz) | 
-|13| Noninear System 2D (Lotka-Volterra) |
-
-We refer details of each dataset to the experimental result section in *WeakIdent: Weak formulation for Identifying
-Differential Equation using Narrow-fit and Trimming*
-
-
-Remark: In order to run WeakIdent on reaction diffusion type equation, please click [here](https://www.dropbox.com/t/TKK9U1ttVwX2mfHP) to download the 
-dataset into folder`dataset-Python`, or run `simulate_reaction_diffusion_eqn.py` to simulate the dataset before running 
-`python main.py --config configs/config_2.yaml`.  To run WeakIdent on Nonlinear System 2D (Lotka-Volterra), please run `simulate_lotka_volterra_2d_ode_eqn.py` to simulate the dataset before running `python main.py --config configs/config_13.yaml`.
-
-
-### Sample output
+### More sample output for each dataset
 We provide sample output for each equation(dataset) in  `output`.
 
-### Credit/note
+## Credit/note
 Build feature matrix through convolution (using fft), this part of the code is modified from `get_lib_columns()` (originally Matlab version) from [WeakSindyPde](https://github.com/dm973/WSINDy_PDE).
-
