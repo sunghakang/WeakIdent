@@ -1,13 +1,15 @@
 import numpy as np 
 from typing import Tuple
-
+'''
+This file stores some mathamtical function necessary for WeakIdent. 
+'''
 
 def rms(x: np.ndarray) -> np.float64:
     """
-    Calculate the relative root mean square of given data.
+    This function calculates the relative root mean square of given data.
     rms(x) = sqrt(sum((x_i - (max(x_i) + min(x_i))/2)^2))
 
-    Note: we are using relative rms instead of rms to enforce noise since the given data may
+    Note: Relative rms instead of rms is used to simulate noise since the given data may
           be centered around a large scale
     Args:
         x (np.ndarray): given clean data
@@ -23,10 +25,10 @@ def rms(x: np.ndarray) -> np.float64:
 
 def circshift(l: list, d: int) -> list:
     """
-    compute the permutation of a list l by shifting all the elements to the left d units
+    This function computes the permutation of a list l by shifting all the elements to the left d units.
     Args:
-        l (list):  given list
-        d (int):   number of shifting
+        l (list):  given list.
+        d (int):   number of shifts.
 
     Returns:
         list: shifted list
@@ -39,7 +41,7 @@ def circshift(l: list, d: int) -> list:
 
 def drange(x: np.array) -> np.float64:
     """
-    compute the scale of range of given data x
+    This function computes the scale of range of given data x
 
     Args:
         x (np.array): given data
@@ -51,17 +53,17 @@ def drange(x: np.array) -> np.float64:
 
 def find_corner_pts(u: np.array, xs: np.array) -> list:
     """
-    This function will find a transition frequency mode of given data in each dimension (spatial / temporal)
+    This function will find a transition frequency mode of given data in each dimension (spatial / temporal).
     Args:
         u (np.array): array of shape (n_x, n_y, n_t) or (n_x, n_t) for one variable in a given system
         xs (np.array): array of shape (dim_x + 1,)
 
-    Remark: We follow the method in "Weak SINDy" to find transition frequency mode. The script is modified from 
+    Remark: This function follows the method in "Weak SINDy" to find a transition frequency mode. The script is modified from 
             Matlab code for Paper, "Weak SINDy for Partial Differential Equations" by D. A. Messenger and D. M. Bortz
 
     Returns:
         list: [k_1^*, k_2^*, k_3^*, ... ] where each k^* represent a corner frequency mode, the order of this 
-              list should be for x, y(if applicable), t
+              list should be for x, y(if applicable), t.
     """
     if u.shape[0] == 1:
         dim = 1
@@ -113,15 +115,15 @@ def find_corner_pts(u: np.array, xs: np.array) -> list:
 
 def least_square_adp(A: np.array, b: np.array) -> np.array:
     """
-    This script solve least square problem Ax = b. In the case of A and b both being a constant number,
-    we simply perform division x = b / A
+    This script solves least square problem Ax = b. In the case of A and b both being a constant number,
+    it simply performs division x = b / A.
 
     Args:
-        A (np.array): array of shape (N, L)
-        b (np.array): array of shape (N, n)
+        A (np.array): array of shape (N, L).
+        b (np.array): array of shape (N, n).
 
     Returns:
-        np.array: array of shape (L, n)
+        np.array: array of shape (L, n).
     """
 
     if A.shape[0] == 1:
@@ -133,15 +135,15 @@ def least_square_adp(A: np.array, b: np.array) -> np.array:
 
 def two_piece_fit_v2(y: np.array) -> np.int64:
     """
-    This function returns the index i as a breaking point for a 2 piece linear fit for y vector.
-    This function is used to find a transition point that partition given data into highly dynamic
+    This function returns the index i as a breaking point for a 2-piece-linear-fit for y vector.
+    This function is used to find a transition point that partitions given data into highly dynamic
     region and other region.
 
     Args:
-        y (np.array): array of shape (num, )
+        y (np.array): array of shape (num, ).
 
     Returns:
-        np.int64: index of breaking point
+        np.int64: index of breaking point.
     """
     NN = len(y)
     y = y.reshape(-1, 1)
@@ -165,15 +167,15 @@ def two_piece_fit_v2(y: np.array) -> np.int64:
 
 def compute_err_res(W: np.array, c: np.array, b: np.array) -> np.float64:
     """
-    compute the residual error of a system
+    This function computes the residual error of a system Wc = b.
 
     Args:
-        W (np.array): feature matrix, array of shape (N, L)
-        c (np.array): predicted sparse coefficient vector, array of shape (L, n)
-        b (np.array): dynamic variables, array of shape (N, n)
+        W (np.array): feature matrix, array of shape (N, L).
+        c (np.array): predicted sparse coefficient vector, array of shape (L, n).
+        b (np.array): dynamic variables, array of shape (N, n).
 
     Returns:
-        np.float64: residual error
+        np.float64: residual error.
     """
     err = np.linalg.norm(W @ c - b) / np.linalg.norm(b)
     return err
@@ -182,13 +184,13 @@ def compute_err_res(W: np.array, c: np.array, b: np.array) -> np.float64:
 def compute_tpr_ppv(c_true: np.array,
                     c: np.array) -> Tuple[np.float64, np.float64]:
     """
-    compute the True Positive Rate (TPR) and Positive Predictive Value (PPV) of 
-    predicted sparse coefficient vector c
+    This function computes the True Positive Rate (TPR) and Positive Predictive Value (PPV) of 
+    predicted sparse coefficient vector c.
     Note: n is the number of variables in a given system.
 
     Args:
-        c_true (np.array): array of shape (L,n)
-        c (np.array): array of shape (L,n)
+        c_true (np.array): array of shape (L,n).
+        c (np.array): array of shape (L,n).
 
     Returns:
         np.float64: tpr
@@ -206,15 +208,16 @@ def compute_tpr_ppv(c_true: np.array,
 
 def compute_err_inf(c_true: np.array, c: np.array) -> np.float64:
     """
-    compute the l_infty norm of error of predicted sparse coefficient vector c
+    This function computes the l_infty norm of error of identified sparse coefficient vector c
+    compared to the true coefficient vector c_true.
     Note: n is the number of variables in a given system.
 
     Args:
-        c_true (np.array): array of shape (L,n)
-        c (np.array): array of shape (L,n)
+        c_true (np.array): array of shape (L,n).
+        c (np.array): array of shape (L,n).
 
     Returns:
-        np.float64: relative l_infty norm error
+        np.float64: relative l_infty norm error.
     """
     if np.sum((c * c_true) != 0) == 0:
         err = 0
@@ -226,15 +229,15 @@ def compute_err_inf(c_true: np.array, c: np.array) -> np.float64:
 
 def compute_err_l2(c_true: np.array, c: np.array) -> np.float64:
     """
-    compute the relative l2 norm error of predicted coefficient vector c
+    This function computes the relative l2 norm error of predicted coefficient vector c.
     Note: n is the number of variables in a given system.
 
     Args:
-        c_true (np.array): array of shape (L,n)
-        c (np.array): array of shape (L,n)
+        c_true (np.array): array of shape (L,n).
+        c (np.array): array of shape (L,n).
 
     Returns:
-        np.float64: relative l_2 norm error
+        np.float64: relative l_2 norm error.
     """
     err = np.linalg.norm(c - c_true) / np.linalg.norm(c_true)
     return err
@@ -245,7 +248,7 @@ def compute_cross_validation_err_v2(support: np.array,
                                     iter_max=30) -> np.float64:
     """
     This function returns the cross validation error for the support of vector c in the least square problem Wc = b.
-    Note: We compute cross-validation error 30 times and take mean + std as our final result for a stablized error.
+    Note: Cross-validation error is computed over 30 times and take mean + std as our final result for a stablized error.
     Args:
         support (np.array): a support vector that stores the index of candiate features for each variable.
         w (np.array): error normalized matrix w of shape (N, L).
@@ -253,7 +256,7 @@ def compute_cross_validation_err_v2(support: np.array,
         iter_max (int, optional): maximum number of iterations. Defaults to 30.
 
     Returns:
-        np.float64: cross-validation error (modified version)
+        np.float64: cross-validation error (modified version).
     """
     err_cross_accu = []
     for _ in range(iter_max):
