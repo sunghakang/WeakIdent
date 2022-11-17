@@ -65,14 +65,14 @@ We refer details of each dataset to the experimental result section in *WeakIden
 
 ### Remark: 
 The dataset for reaction diffusion type equation and Nonlinear Lotka-Volterro equation is sligher larger (100-200 M). They are not provided in `dataset-Python`.
--  In order to run WeakIdent on reaction diffusion type equation
 
-   [option 1] please click [here](https://www.dropbox.com/t/TKK9U1ttVwX2mfHP) to download the dataset into folder`dataset-Python`, or 
+I provided auto-simulation on these two dataset when running WeakIdent on reaction diffusion type equation. 
 
-   [option 2] run `simulate_reaction_diffusion_eqn.py` to simulate the dataset before running 
-`python main.py --config configs/config_2.yaml`.  
+- To run WeakIdent on reaction diffusion type equation run `python main.py --config configs/config_2.yaml`. The auto simulation takes 1-3 mintues.
 
-- To run WeakIdent on Nonlinear System 2D (Lotka-Volterra), please run `simulate_lotka_volterra_2d_ode_eqn.py` to simulate the dataset before running `python main.py --config configs/config_13.yaml`.
+- To run WeakIdent on Nonlinear System 2D (Lotka-Volterra), please run `python main.py --config configs/config_13.yaml`. The auto simulation takes 1 second.
+
+- To run other examples, WeakIdent directly takes provided datasets as input. Running time various between 1 - 30 seconds. 
 
 ## Run WeakIdent on provided datasets
 There are 13 datasets provided in `dataset-Python`. To run WeakIdent on each indivial dataset, 
