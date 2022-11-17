@@ -2,6 +2,10 @@ import numpy as np
 from typing import Tuple
 '''
 This file stores some mathamtical function necessary for WeakIdent. 
+
+Code author: Mengyi Tang Rajchel.
+
+Copyright 2022, All Rights Reserved
 '''
 
 def rms(x: np.ndarray) -> np.float64:
