@@ -159,7 +159,7 @@ def write_output_tables(num_of_variables: int, c_true: np.array, dim_x: int,
     df_eqns = write_true_and_identified_equations(c_true, c_pred,
                                                   latex_tags_lhs,
                                                   latex_tags_rhs)
-    df_coe = write_coefficient_table(num_of_variables, c_true, c_pred latex_tags_lhs,
+    df_coe = write_coefficient_table(num_of_variables, c_true, c_pred, latex_tags_lhs,
                                      latex_tags_rhs)
     df_errs = write_identification_err_table(
         c_true, c_pred, w, b, idx_highly_dynamic)
