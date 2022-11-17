@@ -238,3 +238,56 @@ def compute_err_l2(c_true: np.array, c: np.array) -> np.float64:
     """
     err = np.linalg.norm(c - c_true) / np.linalg.norm(c_true)
     return err
+
+def compute_cross_validation_err_v2(support: np.array,
+                                    w: np.array,
+                                    b: np.array,
+                                    iter_max=30) -> np.float64:
+    """
+    This function returns the cross validation error for the support of vector c in the least square problem Wc = b.
+    Note: We compute cross-validation error 30 times and take mean + std as our final result for a stablized error.
+    Args:
+        support (np.array): a support vector that stores the index of candiate features for each variable.
+        w (np.array): error normalized matrix w of shape (N, L).
+        b (np.array): error normalized vector b of shape (N, 1).
+        iter_max (int, optional): maximum number of iterations. Defaults to 30.
+
+    Returns:
+        np.float64: cross-validation error (modified version)
+    """
+    err_cross_accu = []
+    for _ in range(iter_max):
+        err_cross_accu.append(compute_cross_validation_error(support, w, b))
+    err_cross_accu = np.array(err_cross_accu)
+    err = np.mean(err_cross_accu) + np.std(err_cross_accu)
+    return err
+
+
+def compute_cross_validation_error(support: np.array,
+                                   w: np.array,
+                                   b: np.array,
+                                   ratio=1 / 100) -> np.float64:
+    """
+    This function computes the cross validation error (from a random split w.r.t. ratio 1/100).
+
+    Args:
+        support (np.array): a support vector that stores the index of candiate features for each variable.
+        w (np.array): error normalized matrix w of shape (N, L).
+        b (np.array): error normalized vector b of shape (N, 1).
+        ratio (_type_, optional): ratio between two partitions of w. Defaults to 1/100.
+
+    Returns:
+        np.float64: cross-validation error
+    """
+    n = len(b)
+    inds = np.random.permutation(n)
+    k = int(np.floor(n * ratio - 1))  # end of part 1
+    w = w[inds, :]
+    b = b[inds, :]
+    coeff = np.zeros(w.shape[1])
+    coeff[support] = least_square_adp(w[:k, support], b[:k]).flatten()
+    e1 = np.linalg.norm(w[k:, :] @ coeff.reshape(-1, 1) - b[k:])
+    coeff = np.zeros(w.shape[1])
+    coeff[support] = least_square_adp(w[k:, support], b[k:]).flatten()
+    e2 = np.linalg.norm(w[:k, :] @ coeff.reshape(-1, 1) - b[:k])
+    return e1 * (1 - ratio) + e2 * ratio

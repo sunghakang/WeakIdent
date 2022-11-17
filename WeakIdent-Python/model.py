@@ -1,6 +1,7 @@
 from utils.feature_library_building import build_feature_vector_tags, compute_test_function_para
 from utils.output_writing import write_output_tables
-from utils.calculations import circshift, two_piece_fit_v2, least_square_adp
+from utils.calculations import circshift, two_piece_fit_v2, least_square_adp, compute_cross_validation_error, compute_cross_validation_err_v2
+
 from utils.others import set_hist_bins, set_sparsity_level
 import numpy as np
 import scipy.linalg
@@ -196,7 +197,6 @@ def weak_ident_pred(
 
     return df_identification_errors, df_identified_eqns, df_coefficient_values, run_time
 
-
 def build_feature_matrix_and_scale_matrix(
         u_hat: np.array, xs: np.array, max_dx: int, skip_x: int, skip_t: int,
         dict_list: np.array, is_1d_ode: bool) -> Tuple[np.array, np.array]:
@@ -234,7 +234,6 @@ def build_feature_matrix_and_scale_matrix(
             max_dx)
 
     return w_b_large, s_b_large
-
 
 def find_highly_dynamic_region(dict_list: np.array, s_b: np.array,
                                is_1d_ode: bool, num_of_variables: int,
@@ -277,7 +276,6 @@ def find_highly_dynamic_region(dict_list: np.array, s_b: np.array,
     transition_group_idx = two_piece_fit_v2(hist)
     idx_highly_dynamic = ind[y[transition_group_idx] - 1:y[-1]]
     return idx_highly_dynamic
-
 
 def diff_eqn_identification(
         tau: float, num_of_variables: int, dim_x: int, is_1d_ode: bool,
@@ -332,487 +330,6 @@ def diff_eqn_identification(
             % (num_var + 1))
         c_pred[support_pred, num_var] = coeff_sp
     return w, b, c_pred
-
-
-def compute_features_matrix_and_rescaled_matrix(
-        rhs_ind: np.array, w_b_large: np.array, idx_highly_dynamic: np.array,
-        scales_rhs_features: np.array) -> Tuple[np.array, np.array, np.array]:
-    """This function builds feature matrix, rescaled feature matrix, and rescaled narrower feature matrix (for narrow-fit)
-       using scaling factor for ech feature.
-    Args:
-        rhs_ind(np.ndarray): shape of (L,) , row index of right-hand-side features.
-        w_b_large (np.array): original feature matrix.
-        idx_highly_dynamic (np.array): row index of features located in highly dynamic region
-        scales_rhs_features (np.array): rescaling factor for right-hand-side features.
-
-    Returns:
-        Tuple[np.array, np.array, np.array]: feature matrix (rhs), rescaled feature matrix, rescaled narrower feature matrix 
-    """
-    w = w_b_large[:, rhs_ind]
-    w_tilda = w * scales_rhs_features
-    w_narrow_tilda = w_tilda[idx_highly_dynamic, :]
-    return w, w_tilda, w_narrow_tilda
-
-
-def compute_discrete_phi(m: int, d: int, p: int) -> np.array:
-    """
-    This function will compute the discretized 0th - dth order partial derivative of 
-    1d test function f(x) = (1-x^2)^p on a localized domain centered around 0 with grid
-    size 2m+1.
-
-    Args:
-        m (int): 2*m+1 is the local intergration grid size for weak features in one dimension.
-        d (int): the highest order of partial derivatives allowed in the dictionary.
-        p (int): a smoothness parameter in the test function f(x) = (1-x^2)^p.
-
-    Remark: The script is modified from Matlab code for Paper, "Weak SINDy for Partial Differential
-            Equations" by D. A. Messenger and D. M. Bortz.
-
-    Returns:
-        np.array: array of shape (d+1, 2*m+1) where i-th (i = 1,...,d, d+1) row represents
-                  d^(i-1)(f)/dx^(i-1).
-    """
-    t = np.arange(m + 1) / m
-    t_l = np.zeros((d + 1, m + 1))
-    t_r = np.zeros((d + 1, m + 1))
-    for j in range(m):
-        t_l[:, j] = np.power(
-            1 + t[j],
-            np.fliplr(np.arange(p - d, p + 1).reshape(1, -1)).flatten())
-        t_r[:, j] = np.power(
-            1 - t[j],
-            np.fliplr(np.arange(p - d, p + 1).reshape(1, -1)).flatten())
-    ps = np.ones((d + 1, 1))
-    for q in range(d):
-        ps[q + 1] = (p - (q + 1) + 1) * ps[q]
-    t_l = ps * t_l
-    t_r = (np.power(-1, np.arange(d + 1)).reshape(-1, 1) * ps) * t_r
-    cfs = np.zeros((d + 1, 2 * m + 1))
-    cfs[0, :] = np.block([
-        np.fliplr((t_l[0, :] * t_r[0, :]).reshape(1, -1)),
-        t_l[0, 1:] * t_r[0, 1:]
-    ])
-    p = np.fliplr(scipy.linalg.pascal(d + 1))
-    for k in range(d):
-        binoms = np.diag(p, d - k - 1)
-        cfs_temp = np.zeros((1, m + 1))
-        for j in range(k + 2):
-            cfs_temp = cfs_temp + binoms[j] * t_l[k + 1 - j, :] * t_r[j, :]
-        cfs[k + 1, :] = np.block([
-            (-1)**(k + 1) * np.fliplr(cfs_temp.reshape(1, -1)),
-            cfs_temp[0, 1:].reshape(1, -1)
-        ])
-    return cfs
-
-
-def compute_feature_and_scale_matrix_ode(
-        m: int, p: int, skip: int, dict_list: np.array, u_hat: np.array,
-        dt: np.array) -> Tuple[np.array, np.array]:
-    """
-    This function computes the feature matrix W and scale matrix S for both lhs and rhs features for ODEs.
-
-    Note: (1) the current version of ode equations refer to 1d ode problems where spatial derivatives do not exits.
-          (2) for odes, we consider the scale matrix S to be identical to feature matrix W.
-    Args:
-        m (int): one-side length of a local integration area.
-        p (int): parameter in the test function.
-        skip (int): skipping steps when downsampling a feature matrix
-        dict_list(np.ndarray): array of shape (L, n + 2). Here each row represents a feature,
-                               column 1 - column n represents the degree of monomial in each feature
-                               column n + 1 has 0s.
-                               column n + 2 represents the order of partial derivatives along temporal
-                               domain. We take 0 or 1 for this value in WeakIdent.
-        u_hat (np.array): array of shape (n,) (given noisy data).
-        dt (np.array): delta t (temporal increase) of given data .
-
-    Returns:
-        np.array, np.array: feature matrix W and sclae matrix S (including lhs)
-    """
-    n_t = u_hat[0].shape[1]
-    subsampling_idx = np.arange(0, n_t - 2 * m, skip)
-    phi_xs = compute_discrete_phi(m, 1, p)
-    mm, nn = phi_xs.shape[0], phi_xs.shape[1]
-    temp = np.block([
-        np.zeros((mm, n_t - nn)),
-        np.power(m * dt, -np.arange(mm)).reshape(-1, 1) * phi_xs / nn
-    ])
-    fft_phis = np.fft.fft(temp)
-    w_b_large = compute_w_ode(dict_list, u_hat, fft_phis, subsampling_idx)
-    s_b_large = w_b_large.copy()
-    return w_b_large, s_b_large
-
-
-def compute_w_ode(dict_list: np.array, u_hat: np.array, fft_phis: np.array,
-                  subsampling_idx: np.array) -> np.array:
-    """
-    Args:
-        dict_list(np.ndarray): array of shape (L, n + 2). Here each row represents a feature,
-                               column 1 - column n represents the degree of monomial in each feature
-                               column n + 1 has 0s.
-                               column n + 2 represents the order of partial derivatives along temporal
-                               domain. We take 0 or 1 for this value in WeakIdent.
-        u_hat (np.array): given noisy data with shape (n,).
-        fft_phis (np.array): array of shape (2, mathbbNx). This is the fast fourier transform of the test function and
-                             it's first order derivative. 
-        subsampling_idx (np.array): array of shape (Nx , ) which stores the index of subsampled feature matrix.
-
-    Returns:
-        np.array: array of shape (N, L + n)
-    """
-    print('The number Nx  in the subsampled feature matrix is',
-          subsampling_idx.shape[0], '.')
-    print('Start building feature matrix W:')
-    L = dict_list.shape[0]
-    w = np.zeros((subsampling_idx.shape[0], L))
-    n = u_hat.shape[0]
-    ind = 0
-    while ind < L:
-        tags = dict_list[ind, :n]
-        fcn = np.power(u_hat[0], tags[0])
-        for k in range(1, n):
-            fcn = fcn * np.power(u_hat[k], tags[k])
-        while np.all(dict_list[ind, :n] == tags):
-            temp = fft_phis
-            test_conv_cell = temp[int(dict_list[ind, n + 1]), :].reshape(-1, 1)
-            fcn_conv = conv_fft_v2(fcn, test_conv_cell, subsampling_idx)
-            w[:, ind] = fcn_conv.flatten()
-            sys.stdout.write('\r')
-            sys.stdout.write("[{:{}}] {:.1f}%".format("=" * ind, L - 1,
-                                                      (100 / (L - 1) * ind)))
-            sys.stdout.flush()
-            ind += 1
-            if ind >= L:
-                break
-    return w
-
-
-def compute_feature_and_scale_matrix_pde(
-        m_x: int, m_t: int, p_x: int, p_t: int, skip_x: int, skip_t: int,
-        dict_list: np.array, u_hat: np.array, dx: np.array, dt: np.array,
-        max_dx: int) -> Tuple[np.array, np.array]:
-    """
-    This function computes the feature matrix W and scale matrix S (including lhs and rhs) for given data.
-
-    Args:
-        m_x (int): 1-side size of integrating region in spatial domain.
-        m_t (int): 1-side size of integrating region in temporal domain.
-        p_x (int): parameter in test function in terms of x.
-        p_t (int): parameter in test function in terms of t.
-        skip_x (int): # skipping steps in spatial domain when downsampling feature matrix
-        skip_t (int): # skipping steps in temporal domain when downsampling feature matrix
-        dict_list(np.ndarray): array of shape (L, n + dim_x + 1). Here each row represents a feature.
-                               Column 1 - column n represents the degree of monomial for each variable
-                               column n+1 - column n+dim_x represents the order of partial derivatives 
-                               along each spatial domain,
-                               and column n+dim_x+1 represents the order of partial derivatives along temporal
-                               domain. We take 0 or 1 in WeakIdent.
-        u_hat (np.array): given data of shape (n,).
-        dx (np.array): delta x (spatial increase) of given data.
-        dt (np.array): delta t (temporal increase) of given data.
-        max_dx (int): maximum total order of partial derivatives.
-
-    Returns:
-        Tuple[np.array, np.array]: feature matrix W and scale matrix S (including lhs).
-    """
-    dims = u_hat[0].shape
-    dim_x = len(dims) - 1
-    subsampling_idx = []
-    shrink_size = np.ones((1, dim_x + 1))
-    shrink_size = np.block(
-        [np.ones((1, dim_x)) * m_x * 2,
-         np.array([[m_t * 2]])]).flatten()
-    ss = np.block([np.ones((1, dim_x)) * skip_x,
-                   np.array([[skip_t]])]).flatten()
-    for j in range(len(dims)):
-        subsampling_idx.append(np.arange(0, dims[j] - shrink_size[j], ss[j]))
-    phi_xs, phi_ts = compute_test_funs(m_x, m_t, p_x, p_t, max_dx)
-    fft_phis = compute_fft_test_fun(dims, phi_xs, phi_ts, m_x, m_t, dx, dt)
-    w_b_large = compute_w(dict_list, u_hat, fft_phis, subsampling_idx)
-    s_b_large = compute_s_v2(w_b_large, dict_list, u_hat, fft_phis,
-                             subsampling_idx)
-    return w_b_large, s_b_large
-
-
-def compute_s_v2(w: np.array, dict_list: np.array, u_hat: np.array,
-                 fft_phis: np.array, subsampling_idx: np.array) -> np.array:
-    """
-    This function computes the scale matrix S (including lhs) for given data.
-
-    Args:
-        w (np.array): (feature matrix array) of shape (N, L + n) where L is the number of rhs features and n 
-                      is the number of variables
-        dict_list(np.ndarray): array of shape (L, n + dim_x + 1). Here each row represents a feature.
-                               Column 1 - column n represents the degree of monomial for each variable, 
-                               column n+1 - column n+dim_x represents the order of partial derivatives 
-                               along each spatial domain, 
-                               and column n+dim_x+1 represents the order of partial derivatives along temporal
-                               domain. We take 0 or 1 in WeakIdent.
-        u_hat (np.array): array of shape (n,) (given noisy data).
-        fft_phis (np.array): array of shape (max_dx+1, mathbbNx). This is the fast fourier transform of a test function
-                             and it's derivatives. 
-        subsampling_idx (np.array): array of shape (Nx , ) which stores the index of subsampled feature matrix.
-
-    Returns:
-        np.array: (scale matrix) array of shape (N, L + n). 
-    """
-    print(" ")
-    print('Start building scale matrix S:')
-    n = u_hat.shape[0]
-    dim = len(u_hat[0].shape)
-    l = dict_list.shape[0]
-    if dim == 2:
-        s = np.ones((len(subsampling_idx[0]) * len(subsampling_idx[1]), l))
-    elif dim == 3:
-        s = np.ones((len(subsampling_idx[0])**2 * len(subsampling_idx[2]), l))
-    ind = 1
-    while ind < l:
-        tags = dict_list[ind, :n]
-        beta_u_plus_beta_v = np.sum(tags)
-        if beta_u_plus_beta_v > 1:
-            fcn = compute_base_of_s(u_hat, tags)
-        while np.all(dict_list[ind, :n] == tags):
-            if beta_u_plus_beta_v == 1:
-                s[:, ind] = w[:, ind]
-            else:
-                test_conv_cell = []
-                if np.sum(dict_list[ind, n:n + dim]) == 0:
-                    for k in range(dim):
-                        temp = fft_phis[k]
-                        test_conv_cell.append(temp[0, :].reshape(-1, 1))
-                else:
-                    for k in range(dim):
-                        temp = fft_phis[k]
-                        test_conv_cell.append(
-                            temp[int(dict_list[ind, n + k]), :].reshape(-1, 1))
-                fcn_conv = conv_fft(fcn, test_conv_cell, subsampling_idx)
-                if dim == 2:
-                    s[:, ind] = np.transpose(fcn_conv, (1, 0)).flatten()
-                elif dim == 3:
-                    s[:, ind] = np.transpose(fcn_conv, (2, 1, 0)).flatten()
-            if dim == 3 or l > 100:
-                print(" Progress {:2.1%}".format((ind + 1) / l), end="\r")
-            else:
-                sys.stdout.write('\r')
-                sys.stdout.write("[{:{}}] {:.1f}%".format(
-                    "=" * ind, l - 1, (100 / (l - 1) * ind)))
-                sys.stdout.flush()
-            ind += 1
-            if ind >= l:
-                break
-    print(" ")
-    return s
-
-
-def compute_base_of_s(u_hat: np.array, tags: np.array) -> np.array:
-    """
-    This function computes the base of the scales (for error normalization) for a given features. 
-    The definition of base follows the idea of leading coefficient of epsilon in WeakIdent paper.
-
-    Args:
-        u_hat (np.array): array of shape (n,) (given data).
-        tags (np.array): the tags of betas (monomial order) of a given feature.
-
-    Returns:
-        np.array: base of scale for a given feature.
-    """
-    n = u_hat.shape[0]
-    if n == 1:
-        fcn = tags[0] * np.power(u_hat[0], tags[0] - 1)
-    elif n >= 2:
-        fcn = np.zeros_like(u_hat[0])
-        for ii in range(n):
-            if tags[ii] == 0:
-                temp = 0
-            else:
-                if tags[ii] == 1:
-                    temp = 1
-                else:
-                    temp = tags[ii] * np.power(u_hat[ii], tags[ii] - 1)
-                for k in range(n):
-                    if k != ii and tags[k] > 0:
-                        temp = temp * np.power(u_hat[k], tags[k])
-            fcn = fcn + temp
-    return fcn
-
-
-def compute_w(dict_list: np.array, u_hat: np.array, fft_phis: np.array,
-              subsampling_idx: np.array):
-    """
-    This function computes the feature matrix W (including lhs) for given data to identify pde equations.
-
-    Args:
-        dict_list(np.ndarray): array of shape (L, n + dim_x + 1). Here each row represents a feature,
-                               column 1 - column n represents the degree of monomial for each variable,
-                               column n+1 - column n+dim_x represents the order of partial derivatives 
-                               along each spatial domain,
-                               and column n+dim_x+1 represents the order of partial derivatives along temporal
-                               domain. We take 0 or 1 in WeakIdent.
-        u_hat (np.array): array of shape (n,) (given data).
-        fft_phis (np.array): array of shape (max_dx+1, mathbbNx). This is the fft of a test functions and it's derivatives. 
-        subsampling_idx (np.array): array of shape (Nx , ) which stores the index of subsampled feature matrix.
-
-    Returns:
-        np.array: (feature matrix including lhs) array of shape (N, L + n). 
-    """
-    print('Start building feature matrix W:')
-    n = u_hat.shape[0]
-    dim = len(u_hat[0].shape)
-    L = dict_list.shape[0]
-    if dim == 2:
-        W = np.zeros((len(subsampling_idx[0]) * len(subsampling_idx[1]), L))
-    elif dim == 3:
-        W = np.zeros((len(subsampling_idx[0])**2 * len(subsampling_idx[2]), L))
-    ind = 0
-    while ind < L:
-        tags = dict_list[ind, :n]
-        fcn = np.power(u_hat[0], tags[0])
-        for k in range(1, n):
-            fcn = fcn * np.power(u_hat[k], tags[k])
-        while np.all(dict_list[ind, :n] == tags):
-            test_conv_cell = []
-            # test_conf_cell store the fft of a test function(or it's derivatives) in all spatial
-            # and temporal dimension
-            for k in range(dim):
-                temp = fft_phis[k]
-                test_conv_cell.append(temp[int(dict_list[ind,
-                                                         n + k]), :].reshape(
-                                                             -1, 1))
-            fcn_conv = conv_fft(fcn, test_conv_cell, subsampling_idx)
-            if dim == 2:
-                W[:, ind] = np.transpose(fcn_conv, (1, 0)).flatten()
-            elif dim == 3:
-                W[:, ind] = np.transpose(fcn_conv, (2, 1, 0)).flatten()
-            if dim == 3 or L > 100:
-                print(" Progress {:2.1%}".format((ind + 1) / L), end="\r")
-            else:
-                sys.stdout.write('\r')
-                sys.stdout.write("[{:{}}] {:.1f}%".format(
-                    "=" * ind, L - 1, (100 / (L - 1) * ind)))
-                sys.stdout.flush()
-            ind += 1
-            if ind >= L:
-                break
-    return W
-
-
-def conv_fft_v2(fu: np.array, fft_phi: np.array,
-                subsampling_idx: np.array) -> np.array:
-    """
-    This function takes f(u) and fft(d^i(phi)) as input and returns the convolution u * d^i(phi) as
-    as a result of weak feature.
-    Note: this function is called only when we have 1d ode systems. See conv_fft for multi-dimensional
-          convlution for the case of PDEs or multi-dimensional ODEs. 
-
-    Args:
-        fu (np.array): the base of a feature (the product of monomials).
-        fft_phi (np.array): This is the fft of test functions (derivative) fft(d^i(phi)).
-        subsampling_idx (np.array): array of shape (Nx, ) which stores the index of subsampled feature matrix.
-
-    Returns:
-        np.array: convolution u * d^i(phi)
-    """
-    ifft_phi = fft_phi.flatten()
-    temp = np.fft.fft(fu).flatten()
-    fu = np.fft.ifft(ifft_phi * temp, axis=0)
-    inds = subsampling_idx.astype(int)
-    fu = fu[inds]
-    return np.real(fu)
-
-
-def conv_fft(fu: np.array, fft_phis: np.array, subsampling_idx: np.array):
-    """
-    This function takes f(u) and fft(d^i(phi)) as input and returns the 
-    multi-dimennional convolution u * d^i(phi) as as a weak feature.
-    Note: this function is called only when the equation to be identified is not a
-          1d ode systems. See conv_fft for multi-dimensional
-          convlution for the case of PDEs or multi-dimensional ODEs. 
-          See conv_fft_v2() for the case of 1d-ode equations.
-    Args:
-        fu (np.array): the base of feature (the product of monomials).
-        fft_phi (np.array): This is the fft of test functions (derivative) fft(d^i(phi)) in each spatial
-                            and temporal domain.
-        subsampling_idx (np.array): stores the index of subsampled feature matrix in each spatial and 
-                                    and temporal domain.
-
-    Returns:
-        np.array: convolution u * d^i(phi)
-    """
-    Ns = fu.shape
-    dim = len(Ns)
-    X = np.copy(fu)
-    for k in range(dim):
-        col_ifft = fft_phis[k]
-        shift = circshift([i for i in range(dim)], 1 - (k + 1))
-        shift_back = circshift([i for i in range(dim)], -1 + (k + 1))
-        Y = np.fft.fft(X.transpose(tuple(shift)), axis=0)
-        if dim == 3:
-            col_ifft = col_ifft.reshape(-1, 1, 1)
-        X = np.fft.ifft(col_ifft * Y, axis=0)
-        inds = subsampling_idx[k].astype(int)
-        if dim == 2:
-            X = X[inds, :]
-        elif dim == 3:
-            X = X[inds, :, :]
-        X = X.transpose(tuple(shift_back))
-    return np.real(X)
-
-
-def compute_fft_test_fun(dims: tuple, phi_xs: np.array, phi_ts: np.array,
-                         m_x: int, m_t: int, dx: np.array,
-                         dt: np.array) -> list:
-    """
-    This function computes fast fourier transform of test function phi and it's partial derivatives w.r.t x and t.
-
-    Args:
-        dims (tuple): (N_x, N_t) or (N_x, N_y, N_t).
-        phi_xs (np.array): array of shape (max_dx +1, 2m_x + 1), fourier transform phi and phi^(i)(x) for i = 0,1,...,max_dx.
-        phi_ts (np.array): array of shape (2, 2m_x + 1), fourier transform phi and phi^(i)(t) for i = 0,1,...,max_dt.
-        m_x (int): 1-side size of integrating region in spatial domain.
-        m_t (int): 1-side size of integrating region in temporal domain.
-        dx (np.array): delta x (spatial increase) of given data.
-        dt (np.array): delta t (temporal increase) of given data.
-
-    Returns:
-        list: [np.array, np.array] where each element is fft(phi_xs) and fft(phi_ts).
-    """
-    dimxandt = len(dims)
-    fft_phis = []
-    mm, nn = phi_xs.shape[0], phi_xs.shape[1]
-    for k in range(dimxandt - 1):
-        temp = np.block([
-            np.zeros((mm, dims[k] - nn)),
-            np.power(m_x * dx, -np.arange(mm)).reshape(-1, 1) * phi_xs / nn
-        ])
-        fft_phis.append(np.fft.fft(temp))
-    mm, nn = phi_ts.shape[0], phi_ts.shape[1]
-    temp = np.block([
-        np.zeros((mm, dims[dimxandt - 1] - nn)),
-        np.power(m_t * dt, -np.arange(mm)).reshape(-1, 1) * phi_ts / nn
-    ])
-    fft_phis.append(np.fft.fft(temp))
-    return fft_phis
-
-
-def compute_test_funs(m_x: int, m_t: int, p_x: int, p_t: int,
-                      max_dx: np.array) -> Tuple[np.array, np.array]:
-    """
-    This function computes the discretized test function for both spatial dimension and temporal 
-    dimension.
-
-    Args:
-        m_x (int): 1-side size of integrating region in spatial domain.
-        m_t (int): 1-side size of integrating region in temporal domain.
-        p_x (int): parameter in test function in terms of x.
-        p_t (int): parameter in test function in terms of t.
-        max_dx (int): maximum total order of partial derivatives.
-
-    Returns:
-        [np.array, np.array] : phi(x) = (1-x^2)^p_x and phi(t) (1-t^2)^p_t.
-    """
-    phi_xs = compute_discrete_phi(m_x, max_dx, p_x)
-    phi_ts = compute_discrete_phi(m_t, 1, p_t)
-    return phi_xs, phi_ts
-
 
 def weak_ident_feature_selection(w: np.array,
                                  b: np.array,
@@ -911,60 +428,53 @@ def weak_ident_feature_selection(w: np.array,
 
     return support_pred, coeff_sp.flatten()
 
-
-def compute_cross_validation_err_v2(support: np.array,
-                                    w: np.array,
-                                    b: np.array,
-                                    iter_max=30) -> np.float64:
-    """
-    This function returns the cross validation error for the support of vector c in the least square problem Wc = b.
-    Note: We compute cross-validation error 30 times and take mean + std as our final result for a stablized error.
+def compute_features_matrix_and_rescaled_matrix(
+        rhs_ind: np.array, w_b_large: np.array, idx_highly_dynamic: np.array,
+        scales_rhs_features: np.array) -> Tuple[np.array, np.array, np.array]:
+    """This function builds feature matrix, rescaled feature matrix, and rescaled narrower feature matrix (for narrow-fit)
+       using scaling factor for ech feature.
     Args:
-        support (np.array): a support vector that stores the index of candiate features for each variable.
-        w (np.array): error normalized matrix w of shape (N, L).
-        b (np.array): error normalized vector b of shape (N, 1).
-        iter_max (int, optional): maximum number of iterations. Defaults to 30.
+        rhs_ind(np.ndarray): shape of (L,) , row index of right-hand-side features.
+        w_b_large (np.array): original feature matrix.
+        idx_highly_dynamic (np.array): row index of features located in highly dynamic region
+        scales_rhs_features (np.array): rescaling factor for right-hand-side features.
 
     Returns:
-        np.float64: cross-validation error (modified version)
+        Tuple[np.array, np.array, np.array]: feature matrix (rhs), rescaled feature matrix, rescaled narrower feature matrix 
     """
-    err_cross_accu = []
-    for _ in range(iter_max):
-        err_cross_accu.append(compute_cross_validation_error(support, w, b))
-    err_cross_accu = np.array(err_cross_accu)
-    err = np.mean(err_cross_accu) + np.std(err_cross_accu)
-    return err
+    w = w_b_large[:, rhs_ind]
+    w_tilda = w * scales_rhs_features
+    w_narrow_tilda = w_tilda[idx_highly_dynamic, :]
+    return w, w_tilda, w_narrow_tilda
 
-
-def compute_cross_validation_error(support: np.array,
-                                   w: np.array,
-                                   b: np.array,
-                                   ratio=1 / 100) -> np.float64:
+def find_idx_of_interesting_feature(n: int, dim: int,
+                                    is_1d_ode: bool) -> np.array:
     """
-    This function computes the cross validation error (from a random split w.r.t. ratio 1/100).
+    This function returns the tags for interesting features which are used in error-normalization
+    for Narrow-fit.
 
     Args:
-        support (np.array): a support vector that stores the index of candiate features for each variable.
-        w (np.array): error normalized matrix w of shape (N, L).
-        b (np.array): error normalized vector b of shape (N, 1).
-        ratio (_type_, optional): ratio between two partitions of w. Defaults to 1/100.
+        n (int): number of variable
+        dim (int): spatial dimension (1 or 2)
+        is_1d_ode (bool): whether or not given data is 1d ode data.
 
     Returns:
-        np.float64: cross-validation error
+        np.array: array which each row represents the tag of one interesting feature.
     """
-    n = len(b)
-    inds = np.random.permutation(n)
-    k = int(np.floor(n * ratio - 1))  # end of part 1
-    w = w[inds, :]
-    b = b[inds, :]
-    coeff = np.zeros(w.shape[1])
-    coeff[support] = least_square_adp(w[:k, support], b[:k]).flatten()
-    e1 = np.linalg.norm(w[k:, :] @ coeff.reshape(-1, 1) - b[k:])
-    coeff = np.zeros(w.shape[1])
-    coeff[support] = least_square_adp(w[k:, support], b[k:]).flatten()
-    e2 = np.linalg.norm(w[:k, :] @ coeff.reshape(-1, 1) - b[:k])
-    return e1 * (1 - ratio) + e2 * ratio
-
+    if is_1d_ode:
+        idx = np.block([np.diag(np.ones(n)), np.zeros((n, 2))])
+        idx = idx.astype(int)
+    else:
+        if n == 1 and dim == 1:
+            idx = np.array([[2, 1, 0]])
+        elif n == 1 and dim == 2:
+            idx = np.array([[2, 1, 0, 0], [2, 0, 1, 0], [3, 1, 1, 0]])
+        elif n == 2 and dim == 1:
+            idx = np.array([[0, 2, 1, 0], [2, 0, 1, 0]])
+        elif n == 2 and dim == 2:
+            idx = np.array([[0, 2, 0, 1, 0], [2, 0, 0, 1, 0], [0, 2, 1, 0, 0],
+                            [2, 0, 1, 0, 0], [2, 1, 1, 0, 0], [1, 2, 0, 1, 0]])
+    return idx
 
 def narrow_fit(w: np.array, b: np.array, support: np.array, s_rhs: np.array,
                s_lhs: np.float64) -> np.array:
@@ -990,7 +500,6 @@ def narrow_fit(w: np.array, b: np.array, support: np.array, s_rhs: np.array,
     c_pred = np.absolute(c_pred * s_rhs[support].reshape(-1, 1) / s_lhs)
     return c_pred
 
-
 def compute_trim_score(w_column_norm: np.array, support: np.array,
                        c_pred: np.array) -> np.array:
     """
@@ -1006,7 +515,6 @@ def compute_trim_score(w_column_norm: np.array, support: np.array,
     trim_score = w_column_norm.flatten()[support] * c_pred.flatten()
     trim_score = trim_score / np.max(trim_score)
     return trim_score
-
 
 def subspace_persuit(phi: np.array, b: np.array, k: int) -> np.array:
     """
@@ -1065,32 +573,451 @@ def subspace_persuit(phi: np.array, b: np.array, k: int) -> np.array:
             supp = [i for i in range(phi.shape[1]) if X[i] != 0]
             return np.array(supp)
 
-
-def find_idx_of_interesting_feature(n: int, dim: int,
-                                    is_1d_ode: bool) -> np.array:
+def compute_discrete_phi(m: int, d: int, p: int) -> np.array:
     """
-    This function returns the tags for interesting features which are used in error-normalization
-    for Narrow-fit.
+    This function will compute the discretized 0th - dth order partial derivative of 
+    1d test function f(x) = (1-x^2)^p on a localized domain centered around 0 with grid
+    size 2m+1.
 
     Args:
-        n (int): number of variable
-        dim (int): spatial dimension (1 or 2)
-        is_1d_ode (bool): whether or not given data is 1d ode data.
+        m (int): 2*m+1 is the local intergration grid size for weak features in one dimension.
+        d (int): the highest order of partial derivatives allowed in the dictionary.
+        p (int): a smoothness parameter in the test function f(x) = (1-x^2)^p.
+
+    Remark: The script is modified from Matlab code for Paper, "Weak SINDy for Partial Differential
+            Equations" by D. A. Messenger and D. M. Bortz.
 
     Returns:
-        np.array: array which each row represents the tag of one interesting feature.
+        np.array: array of shape (d+1, 2*m+1) where i-th (i = 1,...,d, d+1) row represents
+                  d^(i-1)(f)/dx^(i-1).
     """
-    if is_1d_ode:
-        idx = np.block([np.diag(np.ones(n)), np.zeros((n, 2))])
-        idx = idx.astype(int)
-    else:
-        if n == 1 and dim == 1:
-            idx = np.array([[2, 1, 0]])
-        elif n == 1 and dim == 2:
-            idx = np.array([[2, 1, 0, 0], [2, 0, 1, 0], [3, 1, 1, 0]])
-        elif n == 2 and dim == 1:
-            idx = np.array([[0, 2, 1, 0], [2, 0, 1, 0]])
-        elif n == 2 and dim == 2:
-            idx = np.array([[0, 2, 0, 1, 0], [2, 0, 0, 1, 0], [0, 2, 1, 0, 0],
-                            [2, 0, 1, 0, 0], [2, 1, 1, 0, 0], [1, 2, 0, 1, 0]])
-    return idx
+    t = np.arange(m + 1) / m
+    t_l = np.zeros((d + 1, m + 1))
+    t_r = np.zeros((d + 1, m + 1))
+    for j in range(m):
+        t_l[:, j] = np.power(
+            1 + t[j],
+            np.fliplr(np.arange(p - d, p + 1).reshape(1, -1)).flatten())
+        t_r[:, j] = np.power(
+            1 - t[j],
+            np.fliplr(np.arange(p - d, p + 1).reshape(1, -1)).flatten())
+    ps = np.ones((d + 1, 1))
+    for q in range(d):
+        ps[q + 1] = (p - (q + 1) + 1) * ps[q]
+    t_l = ps * t_l
+    t_r = (np.power(-1, np.arange(d + 1)).reshape(-1, 1) * ps) * t_r
+    cfs = np.zeros((d + 1, 2 * m + 1))
+    cfs[0, :] = np.block([
+        np.fliplr((t_l[0, :] * t_r[0, :]).reshape(1, -1)),
+        t_l[0, 1:] * t_r[0, 1:]
+    ])
+    p = np.fliplr(scipy.linalg.pascal(d + 1))
+    for k in range(d):
+        binoms = np.diag(p, d - k - 1)
+        cfs_temp = np.zeros((1, m + 1))
+        for j in range(k + 2):
+            cfs_temp = cfs_temp + binoms[j] * t_l[k + 1 - j, :] * t_r[j, :]
+        cfs[k + 1, :] = np.block([
+            (-1)**(k + 1) * np.fliplr(cfs_temp.reshape(1, -1)),
+            cfs_temp[0, 1:].reshape(1, -1)
+        ])
+    return cfs
+
+def compute_feature_and_scale_matrix_ode(
+        m: int, p: int, skip: int, dict_list: np.array, u_hat: np.array,
+        dt: np.array) -> Tuple[np.array, np.array]:
+    """
+    This function computes the feature matrix W and scale matrix S for both lhs and rhs features for ODEs.
+
+    Note: (1) the current version of ode equations refer to 1d ode problems where spatial derivatives do not exits.
+          (2) for odes, we consider the scale matrix S to be identical to feature matrix W.
+    Args:
+        m (int): one-side length of a local integration area.
+        p (int): parameter in the test function.
+        skip (int): skipping steps when downsampling a feature matrix
+        dict_list(np.ndarray): array of shape (L, n + 2). Here each row represents a feature,
+                               column 1 - column n represents the degree of monomial in each feature
+                               column n + 1 has 0s.
+                               column n + 2 represents the order of partial derivatives along temporal
+                               domain. We take 0 or 1 for this value in WeakIdent.
+        u_hat (np.array): array of shape (n,) (given noisy data).
+        dt (np.array): delta t (temporal increase) of given data .
+
+    Returns:
+        np.array, np.array: feature matrix W and sclae matrix S (including lhs)
+    """
+    n_t = u_hat[0].shape[1]
+    subsampling_idx = np.arange(0, n_t - 2 * m, skip)
+    phi_xs = compute_discrete_phi(m, 1, p)
+    mm, nn = phi_xs.shape[0], phi_xs.shape[1]
+    temp = np.block([
+        np.zeros((mm, n_t - nn)),
+        np.power(m * dt, -np.arange(mm)).reshape(-1, 1) * phi_xs / nn
+    ])
+    fft_phis = np.fft.fft(temp)
+    w_b_large = compute_w_ode(dict_list, u_hat, fft_phis, subsampling_idx)
+    s_b_large = w_b_large.copy()
+    return w_b_large, s_b_large
+
+def compute_feature_and_scale_matrix_pde(
+        m_x: int, m_t: int, p_x: int, p_t: int, skip_x: int, skip_t: int,
+        dict_list: np.array, u_hat: np.array, dx: np.array, dt: np.array,
+        max_dx: int) -> Tuple[np.array, np.array]:
+    """
+    This function computes the feature matrix W and scale matrix S (including lhs and rhs) for given data.
+
+    Args:
+        m_x (int): 1-side size of integrating region in spatial domain.
+        m_t (int): 1-side size of integrating region in temporal domain.
+        p_x (int): parameter in test function in terms of x.
+        p_t (int): parameter in test function in terms of t.
+        skip_x (int): # skipping steps in spatial domain when downsampling feature matrix
+        skip_t (int): # skipping steps in temporal domain when downsampling feature matrix
+        dict_list(np.ndarray): array of shape (L, n + dim_x + 1). Here each row represents a feature.
+                               Column 1 - column n represents the degree of monomial for each variable
+                               column n+1 - column n+dim_x represents the order of partial derivatives 
+                               along each spatial domain,
+                               and column n+dim_x+1 represents the order of partial derivatives along temporal
+                               domain. We take 0 or 1 in WeakIdent.
+        u_hat (np.array): given data of shape (n,).
+        dx (np.array): delta x (spatial increase) of given data.
+        dt (np.array): delta t (temporal increase) of given data.
+        max_dx (int): maximum total order of partial derivatives.
+
+    Returns:
+        Tuple[np.array, np.array]: feature matrix W and scale matrix S (including lhs).
+    """
+    dims = u_hat[0].shape
+    dim_x = len(dims) - 1
+    subsampling_idx = []
+    shrink_size = np.ones((1, dim_x + 1))
+    shrink_size = np.block(
+        [np.ones((1, dim_x)) * m_x * 2,
+         np.array([[m_t * 2]])]).flatten()
+    ss = np.block([np.ones((1, dim_x)) * skip_x,
+                   np.array([[skip_t]])]).flatten()
+    for j in range(len(dims)):
+        subsampling_idx.append(np.arange(0, dims[j] - shrink_size[j], ss[j]))
+    phi_xs, phi_ts = compute_test_funs(m_x, m_t, p_x, p_t, max_dx)
+    fft_phis = compute_fft_test_fun(dims, phi_xs, phi_ts, m_x, m_t, dx, dt)
+    w_b_large = compute_w(dict_list, u_hat, fft_phis, subsampling_idx)
+    s_b_large = compute_s_v2(w_b_large, dict_list, u_hat, fft_phis,
+                             subsampling_idx)
+    return w_b_large, s_b_large
+
+def compute_w_ode(dict_list: np.array, u_hat: np.array, fft_phis: np.array,
+                  subsampling_idx: np.array) -> np.array:
+    """
+    Args:
+        dict_list(np.ndarray): array of shape (L, n + 2). Here each row represents a feature,
+                               column 1 - column n represents the degree of monomial in each feature
+                               column n + 1 has 0s.
+                               column n + 2 represents the order of partial derivatives along temporal
+                               domain. We take 0 or 1 for this value in WeakIdent.
+        u_hat (np.array): given noisy data with shape (n,).
+        fft_phis (np.array): array of shape (2, mathbbNx). This is the fast fourier transform of the test function and
+                             it's first order derivative. 
+        subsampling_idx (np.array): array of shape (Nx , ) which stores the index of subsampled feature matrix.
+
+    Returns:
+        np.array: array of shape (N, L + n)
+    """
+    print('The number Nx  in the subsampled feature matrix is',
+          subsampling_idx.shape[0], '.')
+    print('Start building feature matrix W:')
+    L = dict_list.shape[0]
+    w = np.zeros((subsampling_idx.shape[0], L))
+    n = u_hat.shape[0]
+    ind = 0
+    while ind < L:
+        tags = dict_list[ind, :n]
+        fcn = np.power(u_hat[0], tags[0])
+        for k in range(1, n):
+            fcn = fcn * np.power(u_hat[k], tags[k])
+        while np.all(dict_list[ind, :n] == tags):
+            temp = fft_phis
+            test_conv_cell = temp[int(dict_list[ind, n + 1]), :].reshape(-1, 1)
+            fcn_conv = conv_fft_v2(fcn, test_conv_cell, subsampling_idx)
+            w[:, ind] = fcn_conv.flatten()
+            sys.stdout.write('\r')
+            sys.stdout.write("[{:{}}] {:.1f}%".format("=" * ind, L - 1,
+                                                      (100 / (L - 1) * ind)))
+            sys.stdout.flush()
+            ind += 1
+            if ind >= L:
+                break
+    return w
+
+def compute_w(dict_list: np.array, u_hat: np.array, fft_phis: np.array,
+              subsampling_idx: np.array):
+    """
+    This function computes the feature matrix W (including lhs) for given data to identify pde equations.
+
+    Args:
+        dict_list(np.ndarray): array of shape (L, n + dim_x + 1). Here each row represents a feature,
+                               column 1 - column n represents the degree of monomial for each variable,
+                               column n+1 - column n+dim_x represents the order of partial derivatives 
+                               along each spatial domain,
+                               and column n+dim_x+1 represents the order of partial derivatives along temporal
+                               domain. We take 0 or 1 in WeakIdent.
+        u_hat (np.array): array of shape (n,) (given data).
+        fft_phis (np.array): array of shape (max_dx+1, mathbbNx). This is the fft of a test functions and it's derivatives. 
+        subsampling_idx (np.array): array of shape (Nx , ) which stores the index of subsampled feature matrix.
+
+    Returns:
+        np.array: (feature matrix including lhs) array of shape (N, L + n). 
+    """
+    print('Start building feature matrix W:')
+    n = u_hat.shape[0]
+    dim = len(u_hat[0].shape)
+    L = dict_list.shape[0]
+    if dim == 2:
+        W = np.zeros((len(subsampling_idx[0]) * len(subsampling_idx[1]), L))
+    elif dim == 3:
+        W = np.zeros((len(subsampling_idx[0])**2 * len(subsampling_idx[2]), L))
+    ind = 0
+    while ind < L:
+        tags = dict_list[ind, :n]
+        fcn = np.power(u_hat[0], tags[0])
+        for k in range(1, n):
+            fcn = fcn * np.power(u_hat[k], tags[k])
+        while np.all(dict_list[ind, :n] == tags):
+            test_conv_cell = []
+            # test_conf_cell store the fft of a test function(or it's derivatives) in all spatial
+            # and temporal dimension
+            for k in range(dim):
+                temp = fft_phis[k]
+                test_conv_cell.append(temp[int(dict_list[ind,
+                                                         n + k]), :].reshape(
+                                                             -1, 1))
+            fcn_conv = conv_fft(fcn, test_conv_cell, subsampling_idx)
+            if dim == 2:
+                W[:, ind] = np.transpose(fcn_conv, (1, 0)).flatten()
+            elif dim == 3:
+                W[:, ind] = np.transpose(fcn_conv, (2, 1, 0)).flatten()
+            if dim == 3 or L > 100:
+                print(" Progress {:2.1%}".format((ind + 1) / L), end="\r")
+            else:
+                sys.stdout.write('\r')
+                sys.stdout.write("[{:{}}] {:.1f}%".format(
+                    "=" * ind, L - 1, (100 / (L - 1) * ind)))
+                sys.stdout.flush()
+            ind += 1
+            if ind >= L:
+                break
+    return W
+
+def compute_base_of_s(u_hat: np.array, tags: np.array) -> np.array:
+    """
+    This function computes the base of the scales (for error normalization) for a given features. 
+    The definition of base follows the idea of leading coefficient of epsilon in WeakIdent paper.
+
+    Args:
+        u_hat (np.array): array of shape (n,) (given data).
+        tags (np.array): the tags of betas (monomial order) of a given feature.
+
+    Returns:
+        np.array: base of scale for a given feature.
+    """
+    n = u_hat.shape[0]
+    if n == 1:
+        fcn = tags[0] * np.power(u_hat[0], tags[0] - 1)
+    elif n >= 2:
+        fcn = np.zeros_like(u_hat[0])
+        for ii in range(n):
+            if tags[ii] == 0:
+                temp = 0
+            else:
+                if tags[ii] == 1:
+                    temp = 1
+                else:
+                    temp = tags[ii] * np.power(u_hat[ii], tags[ii] - 1)
+                for k in range(n):
+                    if k != ii and tags[k] > 0:
+                        temp = temp * np.power(u_hat[k], tags[k])
+            fcn = fcn + temp
+    return fcn
+
+def compute_s_v2(w: np.array, dict_list: np.array, u_hat: np.array,
+                 fft_phis: np.array, subsampling_idx: np.array) -> np.array:
+    """
+    This function computes the scale matrix S (including lhs) for given data.
+
+    Args:
+        w (np.array): (feature matrix array) of shape (N, L + n) where L is the number of rhs features and n 
+                      is the number of variables
+        dict_list(np.ndarray): array of shape (L, n + dim_x + 1). Here each row represents a feature.
+                               Column 1 - column n represents the degree of monomial for each variable, 
+                               column n+1 - column n+dim_x represents the order of partial derivatives 
+                               along each spatial domain, 
+                               and column n+dim_x+1 represents the order of partial derivatives along temporal
+                               domain. We take 0 or 1 in WeakIdent.
+        u_hat (np.array): array of shape (n,) (given noisy data).
+        fft_phis (np.array): array of shape (max_dx+1, mathbbNx). This is the fast fourier transform of a test function
+                             and it's derivatives. 
+        subsampling_idx (np.array): array of shape (Nx , ) which stores the index of subsampled feature matrix.
+
+    Returns:
+        np.array: (scale matrix) array of shape (N, L + n). 
+    """
+    print(" ")
+    print('Start building scale matrix S:')
+    n = u_hat.shape[0]
+    dim = len(u_hat[0].shape)
+    l = dict_list.shape[0]
+    if dim == 2:
+        s = np.ones((len(subsampling_idx[0]) * len(subsampling_idx[1]), l))
+    elif dim == 3:
+        s = np.ones((len(subsampling_idx[0])**2 * len(subsampling_idx[2]), l))
+    ind = 1
+    while ind < l:
+        tags = dict_list[ind, :n]
+        beta_u_plus_beta_v = np.sum(tags)
+        if beta_u_plus_beta_v > 1:
+            fcn = compute_base_of_s(u_hat, tags)
+        while np.all(dict_list[ind, :n] == tags):
+            if beta_u_plus_beta_v == 1:
+                s[:, ind] = w[:, ind]
+            else:
+                test_conv_cell = []
+                if np.sum(dict_list[ind, n:n + dim]) == 0:
+                    for k in range(dim):
+                        temp = fft_phis[k]
+                        test_conv_cell.append(temp[0, :].reshape(-1, 1))
+                else:
+                    for k in range(dim):
+                        temp = fft_phis[k]
+                        test_conv_cell.append(
+                            temp[int(dict_list[ind, n + k]), :].reshape(-1, 1))
+                fcn_conv = conv_fft(fcn, test_conv_cell, subsampling_idx)
+                if dim == 2:
+                    s[:, ind] = np.transpose(fcn_conv, (1, 0)).flatten()
+                elif dim == 3:
+                    s[:, ind] = np.transpose(fcn_conv, (2, 1, 0)).flatten()
+            if dim == 3 or l > 100:
+                print(" Progress {:2.1%}".format((ind + 1) / l), end="\r")
+            else:
+                sys.stdout.write('\r')
+                sys.stdout.write("[{:{}}] {:.1f}%".format(
+                    "=" * ind, l - 1, (100 / (l - 1) * ind)))
+                sys.stdout.flush()
+            ind += 1
+            if ind >= l:
+                break
+    print(" ")
+    return s
+
+def conv_fft(fu: np.array, fft_phis: np.array, subsampling_idx: np.array):
+    """
+    This function takes f(u) and fft(d^i(phi)) as input and returns the 
+    multi-dimennional convolution u * d^i(phi) as as a weak feature.
+    Note: this function is called only when the equation to be identified is not a
+          1d ode systems. See conv_fft for multi-dimensional
+          convlution for the case of PDEs or multi-dimensional ODEs. 
+          See conv_fft_v2() for the case of 1d-ode equations.
+    Args:
+        fu (np.array): the base of feature (the product of monomials).
+        fft_phi (np.array): This is the fft of test functions (derivative) fft(d^i(phi)) in each spatial
+                            and temporal domain.
+        subsampling_idx (np.array): stores the index of subsampled feature matrix in each spatial and 
+                                    and temporal domain.
+
+    Returns:
+        np.array: convolution u * d^i(phi)
+    """
+    Ns = fu.shape
+    dim = len(Ns)
+    X = np.copy(fu)
+    for k in range(dim):
+        col_ifft = fft_phis[k]
+        shift = circshift([i for i in range(dim)], 1 - (k + 1))
+        shift_back = circshift([i for i in range(dim)], -1 + (k + 1))
+        Y = np.fft.fft(X.transpose(tuple(shift)), axis=0)
+        if dim == 3:
+            col_ifft = col_ifft.reshape(-1, 1, 1)
+        X = np.fft.ifft(col_ifft * Y, axis=0)
+        inds = subsampling_idx[k].astype(int)
+        if dim == 2:
+            X = X[inds, :]
+        elif dim == 3:
+            X = X[inds, :, :]
+        X = X.transpose(tuple(shift_back))
+    return np.real(X)
+
+def conv_fft_v2(fu: np.array, fft_phi: np.array,
+                subsampling_idx: np.array) -> np.array:
+    """
+    This function takes f(u) and fft(d^i(phi)) as input and returns the convolution u * d^i(phi) as
+    as a result of weak feature.
+    Note: this function is called only when we have 1d ode systems. See conv_fft for multi-dimensional
+          convlution for the case of PDEs or multi-dimensional ODEs. 
+
+    Args:
+        fu (np.array): the base of a feature (the product of monomials).
+        fft_phi (np.array): This is the fft of test functions (derivative) fft(d^i(phi)).
+        subsampling_idx (np.array): array of shape (Nx, ) which stores the index of subsampled feature matrix.
+
+    Returns:
+        np.array: convolution u * d^i(phi)
+    """
+    ifft_phi = fft_phi.flatten()
+    temp = np.fft.fft(fu).flatten()
+    fu = np.fft.ifft(ifft_phi * temp, axis=0)
+    inds = subsampling_idx.astype(int)
+    fu = fu[inds]
+    return np.real(fu)
+
+def compute_test_funs(m_x: int, m_t: int, p_x: int, p_t: int,
+                      max_dx: np.array) -> Tuple[np.array, np.array]:
+    """
+    This function computes the discretized test function for both spatial dimension and temporal 
+    dimension.
+
+    Args:
+        m_x (int): 1-side size of integrating region in spatial domain.
+        m_t (int): 1-side size of integrating region in temporal domain.
+        p_x (int): parameter in test function in terms of x.
+        p_t (int): parameter in test function in terms of t.
+        max_dx (int): maximum total order of partial derivatives.
+
+    Returns:
+        [np.array, np.array] : phi(x) = (1-x^2)^p_x and phi(t) (1-t^2)^p_t.
+    """
+    phi_xs = compute_discrete_phi(m_x, max_dx, p_x)
+    phi_ts = compute_discrete_phi(m_t, 1, p_t)
+    return phi_xs, phi_ts
+
+def compute_fft_test_fun(dims: tuple, phi_xs: np.array, phi_ts: np.array,
+                         m_x: int, m_t: int, dx: np.array,
+                         dt: np.array) -> list:
+    """
+    This function computes fast fourier transform of test function phi and it's partial derivatives w.r.t x and t.
+
+    Args:
+        dims (tuple): (N_x, N_t) or (N_x, N_y, N_t).
+        phi_xs (np.array): array of shape (max_dx +1, 2m_x + 1), fourier transform phi and phi^(i)(x) for i = 0,1,...,max_dx.
+        phi_ts (np.array): array of shape (2, 2m_x + 1), fourier transform phi and phi^(i)(t) for i = 0,1,...,max_dt.
+        m_x (int): 1-side size of integrating region in spatial domain.
+        m_t (int): 1-side size of integrating region in temporal domain.
+        dx (np.array): delta x (spatial increase) of given data.
+        dt (np.array): delta t (temporal increase) of given data.
+
+    Returns:
+        list: [np.array, np.array] where each element is fft(phi_xs) and fft(phi_ts).
+    """
+    dimxandt = len(dims)
+    fft_phis = []
+    mm, nn = phi_xs.shape[0], phi_xs.shape[1]
+    for k in range(dimxandt - 1):
+        temp = np.block([
+            np.zeros((mm, dims[k] - nn)),
+            np.power(m_x * dx, -np.arange(mm)).reshape(-1, 1) * phi_xs / nn
+        ])
+        fft_phis.append(np.fft.fft(temp))
+    mm, nn = phi_ts.shape[0], phi_ts.shape[1]
+    temp = np.block([
+        np.zeros((mm, dims[dimxandt - 1] - nn)),
+        np.power(m_t * dt, -np.arange(mm)).reshape(-1, 1) * phi_ts / nn
+    ])
+    fft_phis.append(np.fft.fft(temp))
+    return fft_phis
