@@ -14,8 +14,10 @@ from typing import Tuple
 
 Modeling functions of WeakIdent to identify partial/ordinary different equations.
 
+Code author:  Mengyi Tang Rajchel.
+
 Copyright 2022, All Rights Reserved
-Code by Mengyi Tang Rajchel
+
 For Paper, "WeakIdent: Weak formulation for Identifying
 Differential Equation using Narrow-fit and Trimming"
 by Mengyi Tang, Wenjing Liao, Rachel Kuske and Sung Ha Kang
@@ -176,7 +178,7 @@ def weak_ident_pred(
     # coefficient recover and idx_highly_dynamic_region will be used during narrow-fit.
     idx_highly_dynamic_region = find_highly_dynamic_region(dictionary_list,
                                                            scale_matrix, is_1d_ode,
-                                                           num_of_variables, dim_x)
+                                                           num_of_variables, dim_x, max_dx)
     # identify differential equation(s) from feature matrix.
     w, b, c_pred = diff_eqn_identification(tau, num_of_variables, dim_x,
                                            is_1d_ode, idx_of_lhs_feature,
@@ -237,7 +239,8 @@ def build_feature_matrix_and_scale_matrix(
 
 def find_highly_dynamic_region(dict_list: np.array, s_b: np.array,
                                is_1d_ode: bool, num_of_variables: int,
-                               dim_x: int) -> np.array:
+                               dim_x: int,
+                               max_dx: int) -> np.array:
     """
     This function returns the index of rows in the feature matrix where (x_i,t_n) is located in the 
     highly dynamic region.
@@ -254,12 +257,13 @@ def find_highly_dynamic_region(dict_list: np.array, s_b: np.array,
         is_1d_ode (bool): whether given data is 1d-ode type.
         num_of_variables(int) : number of variables of given data.
         dim_x(int): spatial dimension of given data.
+        max_dx (int): maximum total order of partial derivatives.
 
     Returns:
         np.array: row index of features located in highly dynamic region
     """
     idx_interesting_features = find_idx_of_interesting_feature(
-        num_of_variables, dim_x, is_1d_ode)
+        num_of_variables, dim_x, is_1d_ode, max_dx)
     num_of_bins = set_hist_bins(is_1d_ode)
     idxs = np.zeros(idx_interesting_features.shape[0])
     dict_list = dict_list.astype(int)
@@ -447,7 +451,7 @@ def compute_features_matrix_and_rescaled_matrix(
     return w, w_tilda, w_narrow_tilda
 
 def find_idx_of_interesting_feature(n: int, dim: int,
-                                    is_1d_ode: bool) -> np.array:
+                                    is_1d_ode: bool, max_dx: int) -> np.array:
     """
     This function returns the tags for interesting features which are used in error-normalization
     for Narrow-fit.
@@ -456,6 +460,8 @@ def find_idx_of_interesting_feature(n: int, dim: int,
         n (int): number of variable
         dim (int): spatial dimension (1 or 2)
         is_1d_ode (bool): whether or not given data is 1d ode data.
+        max_dx (int): maximum total order of partial derivatives. This is used to distinguish interesting features 
+        for multi-dimensional pde and multi-dimensional ode
 
     Returns:
         np.array: array which each row represents the tag of one interesting feature.
@@ -464,15 +470,20 @@ def find_idx_of_interesting_feature(n: int, dim: int,
         idx = np.block([np.diag(np.ones(n)), np.zeros((n, 2))])
         idx = idx.astype(int)
     else:
-        if n == 1 and dim == 1:
-            idx = np.array([[2, 1, 0]])
-        elif n == 1 and dim == 2:
-            idx = np.array([[2, 1, 0, 0], [2, 0, 1, 0], [3, 1, 1, 0]])
-        elif n == 2 and dim == 1:
-            idx = np.array([[0, 2, 1, 0], [2, 0, 1, 0]])
-        elif n == 2 and dim == 2:
-            idx = np.array([[0, 2, 0, 1, 0], [2, 0, 0, 1, 0], [0, 2, 1, 0, 0],
-                            [2, 0, 1, 0, 0], [2, 1, 1, 0, 0], [1, 2, 0, 1, 0]])
+        if max_dx == 0:
+            idx = np.block([np.diag(np.ones(n)), np.zeros((n, dim + 1))])
+            idx = idx.astype(int)
+        else:
+            if n == 1 and dim == 1:
+                idx = np.array([[2, 1, 0]])
+            elif n == 1 and dim == 2:
+                idx = np.array([[2, 1, 0, 0], [2, 0, 1, 0], [3, 1, 1, 0]])
+            elif n == 2 and dim == 1:
+                idx = np.array([[0, 2, 1, 0], [2, 0, 1, 0]])
+            elif n == 2 and dim == 2:
+                idx = np.array([[0, 2, 0, 1, 0], [2, 0, 0, 1, 0], [0, 2, 1, 0, 0],
+                                [2, 0, 1, 0, 0], [2, 1, 1, 0, 0], [1, 2, 0, 1, 0]])
+
     return idx
 
 def narrow_fit(w: np.array, b: np.array, support: np.array, s_rhs: np.array,
