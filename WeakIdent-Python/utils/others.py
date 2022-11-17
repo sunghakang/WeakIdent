@@ -1,5 +1,10 @@
 """
 Some utils functions of weakident to predict partial/ordinary different equations.
+
+Code author: Mengyi Tang Rajchel.
+    
+Copyright 2022, All Rights Reserved
+
 """
 
 def set_hist_bins(is_1d_ode: bool) -> int:
