@@ -1,6 +1,6 @@
 import argparse
 import yaml
-from utils import load_data, add_noise
+from utils.data import load_data, add_noise
 from model import weak_ident_pred
 from tabulate import tabulate
 

@@ -1,4 +1,7 @@
-from utils import build_feature_vector_tags, compute_test_function_para, circshift, two_piece_fit_v2, least_square_adp, set_hist_bins, set_sparsity_level, write_output_tables
+from utils.feature_library_building import build_feature_vector_tags, compute_test_function_para
+from utils.output_writing import write_output_tables
+from utils.calculations import circshift, two_piece_fit_v2, least_square_adp
+from utils.others import set_hist_bins, set_sparsity_level
 import numpy as np
 import scipy.linalg
 import numpy_indexed as npi
@@ -25,7 +28,7 @@ def weak_ident_pred(
         use_cross_der: bool,
         tau) -> Tuple[np.array, np.array, pd.core.frame.DataFrame, float]:
     """
-    This is the main function to identify a system of partial differential equations or 
+    Identify a system of partial differential equations or 
     ordinary differential equations using weak_ident. 
     More details of this work (WeakIdent) can be found through this link: https://arxiv.org/abs/2211.03134.
 
