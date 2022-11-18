@@ -42,7 +42,7 @@ Noisy time series data are taken in with spacing as input and output a governing
     ├── main.py
     ├── model.py
     ├── output
-    └── utils.py
+    └── utils
 ```
 
 ## WeakIdent - Matlab 
