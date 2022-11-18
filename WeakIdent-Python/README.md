@@ -42,8 +42,8 @@ Noisy time series data are taken in with spacing as input and output a governing
 
 
 ## Datasets
-Sample datasets from various type of equations including true coefficients. can be found in folder `dataset-Python`. For each dataset, there exists a 
-configuration file in `configs` that specifies the input argument to run WeakIdent. The following table provide equations names of each dataset:
+Sample datasets from various type of equations including true coefficients can be found in the folder `dataset-Python`. For each dataset, there exists a 
+configuration file in `configs` that specifies the input argument to run WeakIdent. The following table provides the name of equations of each dataset:
 
 | config file  index       | Equation name      | 
 |:-------------:|-------------|
@@ -61,14 +61,12 @@ configuration file in `configs` that specifies the input argument to run WeakIde
 |12| Nonlinear System (Lorenz) | 
 |13| Noninear System 2D (Lotka-Volterra) |
 
-We refer details of each dataset to the experimental result section in *WeakIdent: Weak formulation for Identifying Differential Equation using Narrow-fit and Trimming*
+We refer details of each dataset to the experimental result section in our paper *WeakIdent: Weak formulation for Identifying Differential Equation using Narrow-fit and Trimming*
 
 ### Remark: 
-The dataset for reaction diffusion type equation and Nonlinear Lotka-Volterro equation is sligher larger (100-200 M). They are not provided in `dataset-Python`.
+The dataset for reaction diffusion type equation and Nonlinear Lotka-Volterro equation are sligher larger (100-200 M). They are not provided in `dataset-Python`. Instead, I provided auto-simulation for these two dataset when running WeakIdent on these equations. 
 
-I provided auto-simulation on these two dataset when running WeakIdent on reaction diffusion type equation. 
-
-- To run WeakIdent on reaction diffusion type equation run `python main.py --config configs/config_2.yaml`. The auto simulation takes 1-3 mintues.
+- To run WeakIdent on reaction diffusion type equation, run `python main.py --config configs/config_2.yaml`. The auto simulation takes 1-3 mintues.
 
 - To run WeakIdent on Nonlinear System 2D (Lotka-Volterra), please run `python main.py --config configs/config_13.yaml`. The auto simulation takes 1 second.
 
@@ -127,7 +125,7 @@ WeakIdent finished support trimming and narrow-fit for variable no.1 . A support
 ```
 
 ## More sample output for each dataset
-We provide sample output for each equation(dataset) in  `output`.
+We provide sample output for each equation(dataset) in  the folder `output`.
 
 ## Credit/note
 Build feature matrix through convolution (using fft), this part of the code is modified from `get_lib_columns()` (originally Matlab version) from [WeakSindyPde](https://github.com/dm973/WSINDy_PDE).
