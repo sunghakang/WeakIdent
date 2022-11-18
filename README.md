@@ -66,8 +66,8 @@ run `main.m` to use WeakIdent on partial differential equations and and ode syst
 
 
 ### Datasets
-Sample datasets from various type of equations including true coefficients. can be found in folder `dataset-Python`. For each dataset, there exists a 
-configuration file in `configs` that specifies the input argument to run WeakIdent. The following table provide equations names of each dataset:
+Sample datasets from various type of equations including true coefficients can be found in folder `dataset-Python`. For each dataset, there exists a 
+configuration file in `configs` that specifies the input argument to run WeakIdent. The following table provides the name of equations for each dataset:
 
 | config file  index       | Equation name      | 
 |:-------------:|-------------|
@@ -85,13 +85,11 @@ configuration file in `configs` that specifies the input argument to run WeakIde
 |12| Nonlinear System (Lorenz) | 
 |13| Noninear System 2D (Lotka-Volterra) |
 
-We refer details of each dataset to the experimental result section in *WeakIdent: Weak formulation for Identifying Differential Equation using Narrow-fit and Trimming*
+We refer details of each dataset to the experimental result section in our paper *WeakIdent: Weak formulation for Identifying Differential Equation using Narrow-fit and Trimming*
 
 **Remark**
 
-The dataset for reaction diffusion type equation and Nonlinear Lotka-Volterro equation is sligher larger (100-200 M). They are not provided in `dataset-Python`.
-
-I provided auto-simulation on these two dataset when running WeakIdent on reaction diffusion type equation. 
+The dataset for reaction diffusion type equation and Nonlinear Lotka-Volterro equation are sligher larger (100-200 M). They are not provided in `dataset-Python`. Instead, I provided auto-simulation on these two dataset when running WeakIdent on these two equations. 
 
 - To run WeakIdent on reaction diffusion type equation run `python main.py --config configs/config_2.yaml`. The auto simulation takes 1-3 mintues.
 
